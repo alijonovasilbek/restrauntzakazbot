@@ -26,6 +26,23 @@ class OrderRepository:
     async def list_user_orders(self, user_id: int):
         return await self.db.fetch_all(select(orders).where(orders.c.user_id == user_id).order_by(orders.c.id.desc()))
 
+    async def list_all_orders(self):
+        return await self.db.fetch_all(select(orders).order_by(orders.c.id.desc()))
+
+    async def list_orders_between(self, start_at, end_at):
+        return await self.db.fetch_all(
+            select(orders)
+            .where(orders.c.created_at >= start_at, orders.c.created_at < end_at)
+            .order_by(orders.c.id.desc())
+        )
+
+    async def list_items_for_orders(self, order_ids: list[int]):
+        if not order_ids:
+            return []
+        return await self.db.fetch_all(
+            select(order_items).where(order_items.c.order_id.in_(order_ids)).order_by(order_items.c.id.asc())
+        )
+
     async def update_status(self, order_id: int, *, status=None, payment_status=None, admin_group_message_id=None) -> None:
         values = {}
         if status is not None:

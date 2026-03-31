@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% block title %}Bon Appétit — Admin{% endblock %}
+
+{% block body %}
+<div style="min-height:100vh;background:var(--bg,#f4faf5);font-family:'Segoe UI',system-ui,sans-serif;color:#1a2e1c">
+
+  <!-- Header -->
+  <header style="background:#fff;border-bottom:1.5px solid #c8e6c9;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(30,80,30,.08)">
+    <div>
+      <div style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#2e7d32,#43a047);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Bon Appétit</div>
+      <div style="font-size:11px;color:#5a7a5e;text-transform:uppercase;letter-spacing:.06em">Admin panel</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="admin-name" style="font-size:13px;color:#5a7a5e;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:999px;padding:5px 12px">...</span>
+      <button onclick="bootstrapAdmin()" style="background:#43a047;color:#fff;border:none;border-radius:10px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer;font-size:13px">↻</button>
+    </div>
+  </header>
+
+  <div style="max-width:900px;margin:0 auto;padding:14px">
+
+    <!-- Status bar -->
+    <div id="a-status" style="min-height:20px;font-weight:700;font-size:14px;margin-bottom:10px;color:#2e7d32"></div>
+
+    <!-- Actions row -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <button onclick="sendBroadcast()" style="background:#2e7d32;color:#fff;border:none;border-radius:12px;padding:10px 18px;font:inherit;font-weight:700;cursor:pointer">📢 Menyuni yuborish</button>
+      <button onclick="loadStats('today')" style="background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer">📊 Bugun</button>
+      <button onclick="loadStats('week')" style="background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer">Hafta</button>
+      <button onclick="loadStats('month')" style="background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer">Oy</button>
+    </div>
+
+    <!-- Stats -->
+    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
+      <h2 style="margin:0 0 12px;font-size:18px">📊 Statistika</h2>
+      <div id="a-stats" style="display:grid;gap:6px;font-size:14px;color:#5a7a5e">Yuklanmoqda...</div>
+    </section>
+
+    <!-- Credentials -->
+    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
+      <h2 style="margin:0 0 12px;font-size:18px">💳 Sozlamalar</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Karta raqami
+          <input id="c-card" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Karta egasi
+          <input id="c-owner" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Qabul vaqti (HH:MM)
+          <input id="c-accept" type="text" placeholder="11:30" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Yetkazish boshlanishi
+          <input id="c-start" type="text" placeholder="12:00" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Yetkazish tugashi
+          <input id="c-end" type="text" placeholder="14:00" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+      </div>
+      <button onclick="saveCredentials()" style="margin-top:12px;background:#43a047;color:#fff;border:none;border-radius:12px;padding:10px 20px;font:inherit;font-weight:700;cursor:pointer">Saqlash</button>
+    </section>
+
+    <!-- Add food -->
+    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
+      <h2 style="margin:0 0 12px;font-size:18px">🍲 Ovqat qo'shish</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Sana
+          <input id="f-date" type="date" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Nomi
+          <input id="f-name" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Narxi (so'm)
+          <input id="f-price" type="number" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Soni (ta)
+          <input id="f-quantity" type="number" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;grid-column:1/-1">Tavsif
+          <textarea id="f-description" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5;resize:vertical;min-height:70px"></textarea>
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;grid-column:1/-1">Telegram image_file_id
+          <input id="f-image" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+      </div>
+      <button onclick="createFood()" style="margin-top:12px;background:#43a047;color:#fff;border:none;border-radius:12px;padding:10px 20px;font:inherit;font-weight:700;cursor:pointer">Qo'shish</button>
+    </section>
+
+    <!-- Foods list -->
+    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
+      <h2 style="margin:0 0 12px;font-size:18px">🍽 Bugungi menyu</h2>
+      <div id="a-foods" style="display:grid;gap:10px"></div>
+    </section>
+
+    <!-- Promotions -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
+        <h2 style="margin:0 0 12px;font-size:18px">🎁 Aksiya qo'shish</h2>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;margin-bottom:8px">Nomi
+          <input id="p-name" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;margin-bottom:8px">Turi
+          <select id="p-type" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
+            <option value="free_delivery_by_quantity">free_delivery_by_quantity</option>
+            <option value="free_item_by_total">free_item_by_total</option>
+            <option value="buy_x_get_y">buy_x_get_y</option>
+          </select>
+        </label>
+        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;margin-bottom:8px">Config JSON
+          <textarea id="p-config" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5;resize:vertical;min-height:80px">{}</textarea>
+        </label>
+        <button onclick="createPromotion()" style="background:#43a047;color:#fff;border:none;border-radius:12px;padding:10px 18px;font:inherit;font-weight:700;cursor:pointer">Saqlash</button>
+      </section>
+      <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
+        <h2 style="margin:0 0 12px;font-size:18px">Aksiyalar</h2>
+        <div id="a-promotions" style="display:grid;gap:8px"></div>
+      </section>
+    </div>
+
+    <!-- Orders -->
+    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:24px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
+      <h2 style="margin:0 0 12px;font-size:18px">📋 Buyurtmalar</h2>
+      <div id="a-orders" style="display:grid;gap:10px"></div>
+    </section>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function adminId() {
+  return Number(getTelegramId() || 0);
+}
+function setStatus(text, ok = true) {
+  const el = document.getElementById('a-status');
+  el.textContent = text;
+  el.style.color = ok ? '#2e7d32' : '#c62828';
+}
+function fmt(n) { return Number(n||0).toLocaleString('uz-UZ') + ' so\'m'; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function bootstrapAdmin() {
+  setStatus('Yuklanmoqda...');
+  const res  = await fetch(`/api/admin/bootstrap?telegram_id=${adminId()}`);
+  const data = await res.json();
+  if (!res.ok) { setStatus(data.detail || 'Xato', false); return; }
+  setStatus('Admin panel yuklandi');
+  renderCredentials(data.credentials);
+  renderFoods(data.foods);
+  renderPromotions(data.promotions);
+  renderOrders(data.orders);
+  renderStats(data.stats);
+  document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
+}
+
+function renderCredentials(c) {
+  document.getElementById('c-card').value  = c.payment_card_number  || '';
+  document.getElementById('c-owner').value = c.payment_card_owner   || '';
+  document.getElementById('c-accept').value= c.order_accept_until   || '';
+  document.getElementById('c-start').value = c.delivery_start_time  || '';
+  document.getElementById('c-end').value   = c.delivery_end_time    || '';
+}
+
+function renderStats(s) {
+  document.getElementById('a-stats').innerHTML = `
+    <strong style="color:#1a2e1c">${esc(s.label)}</strong>
+    <div>Buyurtmalar: <b>${s.orders_count}</b></div>
+    <div>Qabul qilingan: <b>${s.accepted_count}</b></div>
+    <div>Chek yuborilgan: <b>${s.submitted_count}</b></div>
+    <div>Tasdiqlangan tushum: <b>${fmt(s.paid_total)}</b></div>
+    <div>Kutilayotgan tushum: <b>${fmt(s.pending_total)}</b></div>
+    ${Object.entries(s.sold_by_food||{}).map(([k,v])=>`<div>${esc(k)}: <b>${v} ta</b></div>`).join('')}
+  `;
+}
+
+const rowStyle = 'border:1.5px solid #c8e6c9;border-radius:12px;padding:12px;background:#f4faf5;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px';
+const btnStyle = (bg)=>`background:${bg};color:#fff;border:none;border-radius:8px;padding:6px 12px;font:inherit;font-weight:700;cursor:pointer;font-size:13px`;
+
+function renderFoods(foods) {
+  document.getElementById('a-foods').innerHTML = foods.length
+    ? foods.map(f => `
+      <div style="${rowStyle}">
+        <div>
+          <div style="font-weight:700;color:#1a2e1c">${esc(f.name)}</div>
+          <div style="color:#5a7a5e;font-size:13px">${fmt(f.price)} · ${f.quantity} ta · ${f.is_active ? 'Aktiv' : 'Yashirin'}</div>
+        </div>
+        <button onclick="deactivateFood(${f.id})" style="${btnStyle('#e65100')}">Yashirish</button>
+      </div>`).join('')
+    : '<div style="color:#5a7a5e;padding:10px">Bugun uchun ovqat yo\'q</div>';
+}
+
+function renderPromotions(promos) {
+  document.getElementById('a-promotions').innerHTML = promos.length
+    ? promos.map(p => `
+      <div style="${rowStyle};flex-direction:column;align-items:stretch">
+        <div style="font-weight:700">${esc(p.name)}</div>
+        <div style="color:#5a7a5e;font-size:12px">${esc(p.promotion_type)}</div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button onclick="togglePromotion(${p.id},${p.is_active?0:1})" style="${btnStyle(p.is_active?'#e65100':'#43a047')}">${p.is_active?'O\'chirish':'Yoqish'}</button>
+          <button onclick="deletePromotion(${p.id})" style="${btnStyle('#c62828')}">O'chirish</button>
+        </div>
+      </div>`).join('')
+    : '<div style="color:#5a7a5e">Aksiyalar yo\'q</div>';
+}
+
+const STATUS_UZ = {pending_payment:'Kutilmoqda',payment_submitted:'Chek yuborildi',accepted:'Qabul qilindi',rejected:'Rad etildi',preparing:'Tayyorlanmoqda',delivered:'Yetkazildi',canceled:'Bekor qilindi'};
+const PAY_UZ    = {pending:'To\'lov kutilmoqda',submitted:'Chek yuborildi',paid:'To\'landi',rejected:'Rad etildi',refunded:'Qaytarildi'};
+
+function renderOrders(orders) {
+  document.getElementById('a-orders').innerHTML = orders.length
+    ? orders.map(o => `
+      <div style="border:1.5px solid #c8e6c9;border-radius:14px;overflow:hidden">
+        <div style="background:#e8f5e9;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700;color:#2e7d32">#${o.id} · ${esc(o.user.full_name)}</div>
+          <div style="font-size:12px;color:#5a7a5e">${STATUS_UZ[o.status]||o.status}</div>
+        </div>
+        <div style="padding:12px 14px;display:grid;gap:6px;font-size:13px">
+          <div>${esc(o.phone)} · ${esc(o.location_text||'—')}</div>
+          ${o.items.map(i=>`<div style="display:flex;justify-content:space-between"><span>${esc(i.food_name)}</span><span>${i.quantity} × ${fmt(i.unit_price)}</span></div>`).join('')}
+          <div style="font-weight:700;border-top:1px dashed #c8e6c9;padding-top:6px">Jami: ${fmt(o.total_price)}</div>
+          <div style="color:#5a7a5e">${PAY_UZ[o.payment_status]||o.payment_status}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+            <button onclick="acceptOrder(${o.id})" style="${btnStyle('#2e7d32')}">Qabul</button>
+            <button onclick="rejectOrder(${o.id})" style="${btnStyle('#c62828')}">Rad</button>
+            <button onclick="cancelOrder(${o.id})" style="${btnStyle('#e65100')}">Bekor</button>
+          </div>
+        </div>
+      </div>`).join('')
+    : '<div style="color:#5a7a5e;padding:10px">Buyurtmalar yo\'q</div>';
+}
+
+async function loadStats(period) {
+  const res  = await fetch(`/api/admin/stats?telegram_id=${adminId()}&period=${period}`);
+  const data = await res.json();
+  if (res.ok) renderStats(data); else setStatus(data.detail||'Xato', false);
+}
+
+async function saveCredentials() {
+  const payload = {
+    payment_card_number: document.getElementById('c-card').value,
+    payment_card_owner:  document.getElementById('c-owner').value,
+    order_accept_until:  document.getElementById('c-accept').value,
+    delivery_start_time: document.getElementById('c-start').value,
+    delivery_end_time:   document.getElementById('c-end').value,
+  };
+  const res  = await fetch(`/api/admin/credentials?telegram_id=${adminId()}`, {
+    method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload),
+  });
+  const data = await res.json();
+  setStatus(res.ok ? 'Sozlamalar saqlandi' : (data.detail||'Xato'), res.ok);
+}
+
+async function createFood() {
+  const fd = new FormData();
+  ['telegram_id','f-date','f-name','f-price','f-quantity','f-description','f-image'].forEach((k,i) => {
+    const keys  = ['telegram_id','menu_date','name','price','quantity','description','image_file_id'];
+    const vals  = [adminId(), document.getElementById('f-date').value, document.getElementById('f-name').value,
+                   document.getElementById('f-price').value, document.getElementById('f-quantity').value,
+                   document.getElementById('f-description').value, document.getElementById('f-image').value];
+    fd.append(keys[i], vals[i]);
+  });
+  const res  = await fetch('/api/admin/foods', {method:'POST', body:fd});
+  const data = await res.json();
+  setStatus(res.ok ? `Ovqat #${data.id} qo'shildi` : (data.detail||'Xato'), res.ok);
+  if (res.ok) bootstrapAdmin();
+}
+
+async function deactivateFood(id) {
+  const fd = new FormData(); fd.append('telegram_id', adminId());
+  const res = await fetch(`/api/admin/foods/${id}/deactivate`, {method:'POST', body:fd});
+  const data = await res.json();
+  setStatus(res.ok ? 'Ovqat yashirildi' : (data.detail||'Xato'), res.ok);
+  if (res.ok) bootstrapAdmin();
+}
+
+async function createPromotion() {
+  const fd = new FormData();
+  fd.append('telegram_id', adminId());
+  fd.append('name', document.getElementById('p-name').value);
+  fd.append('promotion_type', document.getElementById('p-type').value);
+  fd.append('config_json', document.getElementById('p-config').value);
+  const res  = await fetch('/api/admin/promotions', {method:'POST', body:fd});
+  const data = await res.json();
+  setStatus(res.ok ? `Aksiya #${data.id} yaratildi` : (data.detail||'Xato'), res.ok);
+  if (res.ok) bootstrapAdmin();
+}
+
+async function togglePromotion(id, flag) {
+  const fd = new FormData(); fd.append('telegram_id', adminId()); fd.append('is_active', flag);
+  const res = await fetch(`/api/admin/promotions/${id}/toggle`, {method:'POST', body:fd});
+  const data = await res.json();
+  setStatus(res.ok ? 'Yangilandi' : (data.detail||'Xato'), res.ok);
+  if (res.ok) bootstrapAdmin();
+}
+
+async function deletePromotion(id) {
+  const res = await fetch(`/api/admin/promotions/${id}?telegram_id=${adminId()}`, {method:'DELETE'});
+  const data = await res.json();
+  setStatus(res.ok ? 'O\'chirildi' : (data.detail||'Xato'), res.ok);
+  if (res.ok) bootstrapAdmin();
+}
+
+async function orderAction(id, action) {
+  const fd = new FormData(); fd.append('telegram_id', adminId());
+  const res = await fetch(`/api/admin/orders/${id}/${action}`, {method:'POST', body:fd});
+  const data = await res.json();
+  setStatus(res.ok ? 'Bajarildi' : (data.detail||'Xato'), res.ok);
+  if (res.ok) bootstrapAdmin();
+}
+
+async function acceptOrder(id) { await orderAction(id, 'accept'); }
+async function rejectOrder(id) { await orderAction(id, 'reject'); }
+async function cancelOrder(id) { await orderAction(id, 'cancel'); }
+
+async function sendBroadcast() {
+  setStatus('Yuborilmoqda...');
+  const fd = new FormData(); fd.append('telegram_id', adminId());
+  const res = await fetch('/api/admin/broadcast', {method:'POST', body:fd});
+  const data = await res.json();
+  setStatus(res.ok ? `Broadcast: ${data.sent} yuborildi, ${data.failed} xato` : (data.detail||'Xato'), res.ok);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const nameEl = document.getElementById('admin-name');
+  const name = getFullName();
+  if (nameEl && name !== 'Foydalanuvchi') nameEl.textContent = name;
+  bootstrapAdmin();
+});
+</script>
+{% endblock %}

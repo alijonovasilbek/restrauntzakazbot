@@ -16,7 +16,7 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-order_status = sa.Enum(
+order_status = postgresql.ENUM(
     "pending_payment",
     "payment_submitted",
     "accepted",
@@ -24,9 +24,23 @@ order_status = sa.Enum(
     "preparing",
     "delivered",
     name="order_status",
+    create_type=False,
 )
-promotion_type = sa.Enum("free_delivery_by_quantity", "free_item_by_total", "buy_x_get_y", name="promotion_type")
-payment_status = sa.Enum("pending", "submitted", "paid", "rejected", name="payment_status")
+promotion_type = postgresql.ENUM(
+    "free_delivery_by_quantity",
+    "free_item_by_total",
+    "buy_x_get_y",
+    name="promotion_type",
+    create_type=False,
+)
+payment_status = postgresql.ENUM(
+    "pending",
+    "submitted",
+    "paid",
+    "rejected",
+    name="payment_status",
+    create_type=False,
+)
 
 
 def upgrade() -> None:

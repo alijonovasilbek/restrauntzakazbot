@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert
 
 from bot.database.session import DatabaseSession
 from bot.models.tables import users
@@ -11,14 +12,13 @@ class UserRepository:
         self.db = db
 
     async def upsert(self, telegram_id: int, full_name: str, username: str | None) -> None:
-        existing = await self.get_by_telegram_id(telegram_id)
-        if existing:
-            await self.db.execute(
-                update(users).where(users.c.telegram_id == telegram_id).values(full_name=full_name, username=username)
-            )
-            return
         await self.db.execute(
-            insert(users).values(telegram_id=telegram_id, full_name=full_name, username=username)
+            insert(users)
+            .values(telegram_id=telegram_id, full_name=full_name, username=username)
+            .on_conflict_do_update(
+                index_elements=[users.c.telegram_id],
+                set_={"full_name": full_name, "username": username},
+            )
         )
 
     async def get_by_telegram_id(self, telegram_id: int):

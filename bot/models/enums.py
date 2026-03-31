@@ -8,6 +8,7 @@ class OrderStatus(StrEnum):
     PAYMENT_SUBMITTED = "payment_submitted"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+    CANCELED = "canceled"
     PREPARING = "preparing"
     DELIVERED = "delivered"
 
@@ -17,6 +18,7 @@ class PaymentStatus(StrEnum):
     SUBMITTED = "submitted"
     PAID = "paid"
     REJECTED = "rejected"
+    REFUNDED = "refunded"
 
 
 class PromotionType(StrEnum):

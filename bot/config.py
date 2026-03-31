@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     default_delivery_fee: int = Field(default=15000, alias="DEFAULT_DELIVERY_FEE")
     use_redis: bool = Field(default=False, alias="USE_REDIS")
     tz: str = Field(default="Asia/Tashkent", alias="TZ")
+    web_host: str = Field(default="0.0.0.0", alias="WEB_HOST")
+    web_port: int = Field(default=8000, alias="WEB_PORT")
+    webapp_base_url: str = Field(default="", alias="WEBAPP_BASE_URL")
 
     @computed_field
     @property

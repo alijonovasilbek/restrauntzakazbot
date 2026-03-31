@@ -6,6 +6,10 @@ from bot.models.enums import OrderStatus, PaymentStatus, PromotionType
 
 metadata = MetaData()
 
+
+def enum_values(enum_cls: type) -> list[str]:
+    return [item.value for item in enum_cls]
+
 users = Table(
     "users",
     metadata,
@@ -38,10 +42,23 @@ promotions = Table(
     metadata,
     Column("id", Integer, primary_key=True),
     Column("name", String(255), nullable=False),
-    Column("promotion_type", Enum(PromotionType, name="promotion_type"), nullable=False),
+    Column("promotion_type", Enum(PromotionType, name="promotion_type", values_callable=enum_values), nullable=False),
     Column("config", JSON, nullable=False),
     Column("is_active", Boolean, nullable=False, default=True, server_default="true"),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+credentials = Table(
+    "credentials",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("payment_card_number", String(64), nullable=False),
+    Column("payment_card_owner", String(255), nullable=False),
+    Column("order_accept_until", String(16), nullable=False),
+    Column("delivery_start_time", String(16), nullable=False),
+    Column("delivery_end_time", String(16), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()),
 )
 
 user_addresses = Table(
@@ -62,8 +79,8 @@ orders = Table(
     metadata,
     Column("id", Integer, primary_key=True),
     Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-    Column("status", Enum(OrderStatus, name="order_status"), nullable=False),
-    Column("payment_status", Enum(PaymentStatus, name="payment_status"), nullable=False),
+    Column("status", Enum(OrderStatus, name="order_status", values_callable=enum_values), nullable=False),
+    Column("payment_status", Enum(PaymentStatus, name="payment_status", values_callable=enum_values), nullable=False),
     Column("total_price", Integer, nullable=False),
     Column("delivery_fee", Integer, nullable=False),
     Column("discount_amount", Integer, nullable=False),

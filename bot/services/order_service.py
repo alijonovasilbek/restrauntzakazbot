@@ -63,7 +63,12 @@ class OrderService:
         promotions = await self.promotion_repo.list_active()
         applied = self.promotion_service.apply(cart_items, promotions)
         subtotal = sum(item["price"] * item["quantity"] for item in cart_items)
-        total_price = max(subtotal - applied.discount_amount, 0) + applied.delivery_fee
+        actual_delivery_fee = applied.delivery_fee if applied.delivery_fee > 0 else 0
+        total_price = max(subtotal - applied.discount_amount, 0) + actual_delivery_fee
+        promotion_lines = list(applied.summary)
+        if applied.bonus_items:
+            promotion_lines.append("Bonus:")
+            promotion_lines.extend(applied.bonus_items)
         items_payload = [
             {
                 "food_id": item["food_id"],
@@ -83,7 +88,7 @@ class OrderService:
                 "total_price": total_price,
                 "delivery_fee": applied.delivery_fee,
                 "discount_amount": applied.discount_amount,
-                "promotion_summary": "\n".join(applied.summary) if applied.summary else None,
+                "promotion_summary": "\n".join(promotion_lines) if promotion_lines else None,
                 "phone": phone,
                 "address_id": address_id,
                 "location_latitude": latitude,

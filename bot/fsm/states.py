@@ -22,8 +22,11 @@ class AdminPromotionStates(StatesGroup):
     waiting_config = State()
 
 
+class AdminCredentialStates(StatesGroup):
+    waiting_value = State()
+
+
 class CheckoutStates(StatesGroup):
     waiting_phone = State()
-    waiting_location_choice = State()
     waiting_location = State()
     waiting_receipt = State()

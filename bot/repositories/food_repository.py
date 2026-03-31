@@ -25,8 +25,17 @@ class FoodRepository:
         rows = await self.db.fetch_all(select(foods.c.id).where(foods.c.menu_date == today, foods.c.is_active.is_(True)))
         return len(rows)
 
-    async def list_today_all(self, today: date):
-        return await self.db.fetch_all(select(foods).where(foods.c.menu_date == today, foods.c.is_active.is_(True)).order_by(foods.c.id.asc()))
+    async def list_today_all(self, today: date, *, include_inactive: bool = False):
+        query = select(foods).where(foods.c.menu_date == today)
+        if not include_inactive:
+            query = query.where(foods.c.is_active.is_(True))
+        return await self.db.fetch_all(query.order_by(foods.c.id.asc()))
+
+    async def list_by_date(self, menu_date: date, *, include_inactive: bool = False):
+        query = select(foods).where(foods.c.menu_date == menu_date)
+        if not include_inactive:
+            query = query.where(foods.c.is_active.is_(True))
+        return await self.db.fetch_all(query.order_by(foods.c.id.asc()))
 
     async def get_by_id(self, food_id: int):
         return await self.db.fetch_one(select(foods).where(foods.c.id == food_id))
@@ -36,6 +45,11 @@ class FoodRepository:
 
     async def delete(self, food_id: int) -> None:
         await self.db.execute(delete(foods).where(foods.c.id == food_id))
+
+    async def deactivate(self, food_id: int) -> None:
+        await self.db.execute(
+            update(foods).where(foods.c.id == food_id).values(is_active=False, quantity=0)
+        )
 
     async def reduce_stock(self, food_id: int, quantity: int) -> None:
         food = await self.get_by_id(food_id)

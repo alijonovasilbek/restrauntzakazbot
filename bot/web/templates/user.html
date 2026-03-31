@@ -1,0 +1,627 @@
+{% extends "base.html" %}
+{% block title %}Bon Appétit — Buyurtma{% endblock %}
+
+{% block body %}
+<div class="app-shell">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-name">Bon Appétit</div>
+      <div class="brand-sub">Bugungi menyu</div>
+    </div>
+    <div class="header-right">
+      <div class="user-chip" id="user-name">...</div>
+      <button class="cart-badge-btn" onclick="switchTab('cart')" title="Savatcha">
+        🛒
+        <span class="badge" id="header-cart-badge" data-count="0">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="app-main">
+
+    <!-- ── MENU TAB ── -->
+    <div class="tab-pane active" id="tab-menu">
+      <div class="menu-banner">
+        <div>
+          <div class="section-title">🍽 Bugungi menyu</div>
+          <div class="section-sub" id="menu-date-label">Yuklanmoqda...</div>
+        </div>
+        <button class="refresh-btn" onclick="loadMenu()">↻ Yangilash</button>
+      </div>
+
+      <div class="promo-strip" id="promo-strip"></div>
+
+      <div id="menu-spinner" class="spinner-wrap"><div class="spinner"></div></div>
+      <div class="menu-grid" id="menu-grid"></div>
+    </div>
+
+    <!-- ── CART TAB ── -->
+    <div class="tab-pane" id="tab-cart">
+      <div class="section-wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-title">🛒 Savatcha</div>
+            <div class="section-sub" id="cart-subtitle">Tanlangan taomlar</div>
+          </div>
+          <button class="refresh-btn" onclick="clearCart()">🗑 Tozalash</button>
+        </div>
+      </div>
+
+      <div class="cart-summary" id="cart-summary">
+        <div class="summary-cell">
+          <span class="summary-label">Mahsulotlar</span>
+          <span class="summary-value" id="cart-items-count">0 ta</span>
+        </div>
+        <div class="summary-cell">
+          <span class="summary-label">Summa</span>
+          <span class="summary-value" id="cart-subtotal">0 so'm</span>
+        </div>
+      </div>
+
+      <div class="cart-list" id="cart-list">
+        <!-- filled by JS -->
+      </div>
+
+      <!-- Aksiyalar — savatcha ostida -->
+      <div id="cart-promos"></div>
+      <div id="cart-hints"></div>
+
+      <div id="cart-total-row" class="cart-total-row" style="display:none">
+        <span class="cart-total-label">Jami to'lov</span>
+        <span class="cart-total-amount" id="cart-total-amount">0 so'm</span>
+      </div>
+
+      <button class="checkout-btn" id="checkout-btn" onclick="sendCartToBot()">
+        Buyurtma berish →
+      </button>
+    </div>
+
+    <!-- ── ORDERS TAB ── -->
+    <div class="tab-pane" id="tab-orders">
+      <div class="section-wrap">
+        <div class="section-head">
+          <div>
+            <div class="section-title">📋 Buyurtmalarim</div>
+            <div class="section-sub">Barcha buyurtmalar tarixi</div>
+          </div>
+          <button class="refresh-btn" onclick="loadOrders()">↻ Yangilash</button>
+        </div>
+      </div>
+
+      <div id="orders-spinner" class="spinner-wrap"><div class="spinner"></div></div>
+      <div class="orders-list" id="orders-list"></div>
+    </div>
+
+  </main>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-menu" onclick="switchTab('menu')">
+      <span class="nav-icon">🍽</span>
+      <span>Menyu</span>
+    </button>
+    <button class="nav-item" id="nav-cart" onclick="switchTab('cart')">
+      <span class="nav-icon">🛒</span>
+      <span>Savatcha</span>
+      <span class="nav-badge" id="nav-cart-badge" data-count="0"></span>
+    </button>
+    <button class="nav-item" id="nav-orders" onclick="switchTab('orders')">
+      <span class="nav-icon">📋</span>
+      <span>Buyurtmalar</span>
+    </button>
+  </nav>
+
+  <!-- Toast container -->
+  <div class="toast-wrap" id="toast-wrap"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── State ─────────────────────────────────────────────────
+let menuFoods       = [];
+let cart            = {};       // { food_id: { food_id, name, price, quantity, max } }
+let menuDate        = '';
+let credentials     = {};
+let promotions      = [];       // all active promotions from API
+let triggeredPromos = new Set(); // already-notified promo ids
+let activeTab       = 'menu';
+
+// ── Telegram helpers ──────────────────────────────────────
+const TG_ID   = getTelegramId;
+const FN      = getFullName;
+const UN      = getUsername;
+
+// ── Utilities ─────────────────────────────────────────────
+function fmt(n) {
+  return Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
+}
+
+function toast(msg, type = 'info') {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+function promoNotify(name, text) {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = 'promo-notify';
+  el.innerHTML = `
+    <div class="promo-notify-icon">🎉</div>
+    <div class="promo-notify-body">
+      <div class="promo-notify-name">${esc(name)}</div>
+      <div class="promo-notify-text">Sizga qo'shildi: ${esc(text)}</div>
+    </div>`;
+  wrap.appendChild(el);
+  setTimeout(() => { el.classList.add('hiding'); setTimeout(() => el.remove(), 300); }, 2000);
+}
+
+// ── Tab switching ─────────────────────────────────────────
+function switchTab(name) {
+  activeTab = name;
+  ['menu','cart','orders'].forEach(t => {
+    document.getElementById('tab-'   + t).classList.toggle('active', t === name);
+    document.getElementById('nav-'   + t).classList.toggle('active', t === name);
+  });
+  if (name === 'orders') loadOrders();
+}
+
+// ── Cart helpers ──────────────────────────────────────────
+function cartItems() {
+  return Object.values(cart).filter(i => i.quantity > 0);
+}
+function cartCount() {
+  return cartItems().reduce((s, i) => s + i.quantity, 0);
+}
+function cartTotal() {
+  return cartItems().reduce((s, i) => s + i.price * i.quantity, 0);
+}
+
+function updateBadges() {
+  const count = cartCount();
+  ['header-cart-badge','nav-cart-badge'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = count;
+    el.setAttribute('data-count', count);
+  });
+}
+
+// ── Cart render ───────────────────────────────────────────
+function renderCart() {
+  const items = cartItems();
+  const count = cartCount();
+  const total = cartTotal();
+
+  document.getElementById('cart-items-count').textContent = count + ' ta';
+  document.getElementById('cart-subtotal').textContent    = fmt(total);
+  document.getElementById('cart-subtitle').textContent    = items.length
+    ? `${items.length} xil taom tanlangan`
+    : 'Hali hech narsa qo\'shilmagan';
+
+  const listEl   = document.getElementById('cart-list');
+  const totalRow = document.getElementById('cart-total-row');
+  const btnEl    = document.getElementById('checkout-btn');
+
+  if (!items.length) {
+    listEl.innerHTML = `
+      <div class="cart-empty">
+        <div class="empty-icon">🛒</div>
+        <h3>Savatcha bo'sh</h3>
+        <p>Menyudan taom tanlang</p>
+      </div>`;
+    totalRow.style.display = 'none';
+    btnEl.disabled = true;
+    renderCartPromos();
+    updateBadges();
+    return;
+  }
+
+  listEl.innerHTML = items.map(item => `
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <div class="cart-item-name">${esc(item.name)}</div>
+        <div class="cart-item-price">${fmt(item.price)} × ${item.quantity}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="qty-btn minus" onclick="changeQty(${item.food_id}, -1)">−</button>
+        <span class="qty-num">${item.quantity}</span>
+        <button class="qty-btn plus" onclick="changeQty(${item.food_id}, 1)"
+          ${item.quantity >= item.max ? 'disabled' : ''}>+</button>
+      </div>
+      <div class="cart-item-total">${fmt(item.price * item.quantity)}</div>
+    </div>
+  `).join('');
+
+  totalRow.style.display = '';
+  document.getElementById('cart-total-amount').textContent = fmt(total);
+
+  btnEl.disabled = false;
+  renderCartPromos();
+  updateBadges();
+}
+
+// ── Promotion logic ───────────────────────────────────────
+function evaluatePromos() {
+  const items    = cartItems();
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  const subtotal = cartTotal();
+  const applied  = [];
+  const hints    = [];
+
+  promotions.forEach(promo => {
+    if (!promo.is_active) return;
+    const cfg  = promo.config || {};
+    const type = promo.promotion_type;
+
+    if (type === 'free_delivery_by_quantity') {
+      const minQty = Number(cfg.min_quantity || 0);
+      if (totalQty >= minQty) {
+        let text = 'Yetkazib berish bepul 🚚';
+        const bonus = (cfg.bonus_text || cfg.free_item_name || '').trim();
+        if (bonus) text += ` · ${bonus} 🎁`;
+        applied.push({ id: promo.id, name: promo.name, text });
+      } else if (totalQty > 0) {
+        const need  = minQty - totalQty;
+        const bonus = (cfg.bonus_text || cfg.free_item_name || '').trim();
+        hints.push(`Yana ${need} ta qo'shing → Bepul yetkazib berish${bonus ? ' + ' + bonus : ''}`);
+      }
+
+    } else if (type === 'free_item_by_total') {
+      const minTotal = Number(cfg.min_total || 0);
+      if (subtotal >= minTotal) {
+        let text = 'Yetkazib berish bepul 🚚';
+        const bonus = (cfg.bonus_text || cfg.free_item_name || '').trim();
+        if (bonus) text += ` · ${bonus} 🎁`;
+        applied.push({ id: promo.id, name: promo.name, text });
+      } else if (subtotal > 0) {
+        const need  = minTotal - subtotal;
+        const bonus = (cfg.bonus_text || cfg.free_item_name || '').trim();
+        hints.push(`Yana ${fmt(need)} qo'shing → Bepul yetkazib berish${bonus ? ' + ' + bonus : ''}`);
+      }
+
+    } else if (type === 'buy_x_get_y') {
+      const targetId = Number(cfg.food_id || 0);
+      const buyQty   = Number(cfg.buy_quantity || 0);
+      const freeQty  = Number(cfg.free_quantity || 0);
+      const foodItem = items.find(i => i.food_id === targetId);
+      if (foodItem && buyQty > 0) {
+        if (foodItem.quantity >= buyQty) {
+          const freeUnits = Math.floor(foodItem.quantity / buyQty) * freeQty;
+          applied.push({ id: promo.id, name: promo.name, text: `${freeUnits} ta ${foodItem.name} bepul 🎁` });
+        } else {
+          const need = buyQty - foodItem.quantity;
+          hints.push(`${foodItem.name}dan yana ${need} ta qo'shing → ${freeQty} ta bepul`);
+        }
+      }
+    }
+  });
+
+  return { applied, hints };
+}
+
+function checkPromos() {
+  const { applied } = evaluatePromos();
+  const appliedIds  = new Set(applied.map(p => p.id));
+
+  applied.forEach(promo => {
+    if (!triggeredPromos.has(promo.id)) {
+      promoNotify(promo.name, promo.text);
+    }
+    triggeredPromos.add(promo.id);
+  });
+
+  triggeredPromos.forEach(id => {
+    if (!appliedIds.has(id)) triggeredPromos.delete(id);
+  });
+}
+
+function renderCartPromos() {
+  const { applied, hints } = evaluatePromos();
+
+  const promosEl = document.getElementById('cart-promos');
+  promosEl.innerHTML = applied.map(p => `
+    <div class="promo-applied">
+      <span class="promo-applied-icon">🎉</span>
+      <div class="promo-applied-body">
+        <div class="promo-applied-name">${esc(p.name)}</div>
+        <div class="promo-applied-text">${esc(p.text)}</div>
+      </div>
+    </div>`).join('');
+
+  const hintsEl = document.getElementById('cart-hints');
+  hintsEl.innerHTML = hints.map(h => `
+    <div class="promo-hint">💡 ${esc(h)}</div>`).join('');
+}
+
+function changeQty(foodId, diff) {
+  const food = menuFoods.find(f => f.id === foodId);
+  const item = cart[foodId];
+  if (diff > 0) {
+    if (!food || food.quantity <= 0) return;
+    const curQty = item ? item.quantity : 0;
+    if (curQty >= food.quantity) { toast('Omborda bundan ko\'p yo\'q', 'error'); return; }
+    if (!item) {
+      cart[foodId] = { food_id: food.id, name: food.name, price: food.price, quantity: 1, max: food.quantity };
+    } else {
+      item.quantity++;
+      item.max = food.quantity;
+    }
+  } else {
+    if (!item) return;
+    item.quantity--;
+    if (item.quantity <= 0) delete cart[foodId];
+  }
+  renderMenu();
+  renderCart();
+  checkPromos();
+}
+
+function clearCart() {
+  if (!cartCount()) { toast('Savatcha allaqachon bo\'sh', 'info'); return; }
+  cart = {};
+  renderMenu();
+  renderCart();
+  toast('Savatcha tozalandi', 'info');
+}
+
+// ── Menu render ───────────────────────────────────────────
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function stockBadge(food) {
+  if (food.quantity <= 0) return `<span class="food-stock out">Tugagan</span>`;
+  return '';
+}
+
+function renderMenu() {
+  const grid = document.getElementById('menu-grid');
+  document.getElementById('menu-spinner').style.display = 'none';
+
+  if (!menuFoods.length) {
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;padding:40px 20px;text-align:center;color:var(--muted)">
+        <div style="font-size:48px;margin-bottom:10px">🍽</div>
+        <h3 style="color:var(--ink)">Bugun uchun menyu yo'q</h3>
+        <p>Biroz kutib, qayta yangilab ko'ring</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = menuFoods.map(food => {
+    const inCart = cart[food.id]?.quantity || 0;
+    const soldOut = food.quantity <= 0;
+    const firstLetter = (food.name || 'F')[0].toUpperCase();
+    const desc = food.description || '';
+    const imgHtml = food.image_file_id
+      ? `<img src="/api/image/${encodeURIComponent(food.image_file_id)}" alt="${esc(food.name)}" loading="lazy" onerror="this.style.display='none'">`
+      : `<span class="food-letter">${esc(firstLetter)}</span>`;
+
+    return `
+    <article class="menu-card${soldOut ? ' sold-out' : ''}">
+      <div class="food-img">${imgHtml}</div>
+      <div class="menu-card-body">
+        <div class="food-name">${esc(food.name)}</div>
+        ${desc ? `<div class="food-desc">${esc(desc)}</div>` : ''}
+        <div class="food-bottom">
+          <div class="food-price">${fmt(food.price)}</div>
+          ${stockBadge(food)}
+        </div>
+        <div class="qty-row">
+          <button class="qty-btn minus" onclick="changeQty(${food.id}, -1)" ${inCart ? '' : 'disabled'}>−</button>
+          <span class="qty-num">${inCart}</span>
+          <button class="qty-btn plus" onclick="changeQty(${food.id}, 1)" ${soldOut ? 'disabled' : ''}>+</button>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+}
+
+// ── Load menu ─────────────────────────────────────────────
+async function syncUser() {
+  const tid = TG_ID();
+  if (!tid) return;
+  const fd = new FormData();
+  fd.append('telegram_id', tid);
+  fd.append('full_name', FN());
+  fd.append('username', UN());
+  await fetch('/api/user/sync', { method: 'POST', body: fd }).catch(() => {});
+}
+
+async function loadMenu() {
+  document.getElementById('menu-spinner').style.display = 'flex';
+  document.getElementById('menu-grid').innerHTML = '';
+  await syncUser();
+  try {
+    const res  = await fetch('/api/user/menu');
+    const data = await res.json();
+    menuFoods   = (data.foods || []).filter(f => f.is_active);
+    menuDate    = data.menu_date || '';
+    credentials = data.credentials || {};
+    promotions  = (data.promotions || []).filter(p => p.is_active);
+    triggeredPromos.clear();
+
+    // Merge cart quantities with fresh stock
+    Object.keys(cart).forEach(id => {
+      const food = menuFoods.find(f => f.id === Number(id));
+      if (!food) { delete cart[id]; return; }
+      cart[id].quantity = Math.min(cart[id].quantity, food.quantity);
+      cart[id].max = food.quantity;
+      if (cart[id].quantity <= 0) delete cart[id];
+    });
+
+    // Date label
+    document.getElementById('menu-date-label').textContent = menuDate
+      ? new Date(menuDate).toLocaleDateString('uz-UZ', { day:'numeric', month:'long', year:'numeric' }) + ' – bugungi taomlar'
+      : 'Bugungi taomlar';
+
+    // Promo pills
+    const promos = data.promotions || [];
+    document.getElementById('promo-strip').innerHTML = promos.length
+      ? promos.map(p => `<div class="promo-pill">🎁 ${esc(p.name)}</div>`).join('')
+      : '<div class="promo-pill empty">Faol aksiya yo\'q</div>';
+
+    renderMenu();
+    renderCart();
+    updateBadges();
+  } catch (e) {
+    document.getElementById('menu-spinner').style.display = 'none';
+    document.getElementById('menu-grid').innerHTML = `
+      <div style="grid-column:1/-1;padding:32px;text-align:center;color:var(--danger)">
+        Menyu yuklanmadi. Qayta urinib ko'ring.
+      </div>`;
+    toast('Menyu yuklanmadi', 'error');
+  }
+}
+
+// ── Orders ────────────────────────────────────────────────
+const STATUS_LABELS = {
+  pending_payment:   ['Kutilmoqda',     'chip-pending'],
+  payment_submitted: ['Chek yuborildi', 'chip-submitted'],
+  accepted:          ['Qabul qilindi',  'chip-accepted'],
+  rejected:          ['Rad etildi',     'chip-rejected'],
+  preparing:         ['Tayyorlanmoqda', 'chip-preparing'],
+  delivered:         ['Yetkazildi',     'chip-delivered'],
+  canceled:          ['Bekor qilindi',  'chip-canceled'],
+};
+const PAY_LABELS = {
+  pending:   ['To\'lov kutilmoqda', 'chip-pending'],
+  submitted: ['Chek yuborildi',     'chip-submitted'],
+  paid:      ['To\'landi',          'chip-paid'],
+  rejected:  ['Rad etildi',         'chip-rejected'],
+  refunded:  ['Qaytarildi',         'chip-canceled'],
+};
+
+function chipHtml(map, key) {
+  const [label, cls] = map[key] || [key, 'chip-pending'];
+  return `<span class="status-chip ${cls}">${label}</span>`;
+}
+
+async function loadOrders() {
+  const tid = TG_ID();
+  if (!tid) {
+    document.getElementById('orders-list').innerHTML = `
+      <div class="orders-empty"><div class="empty-icon">🔒</div>
+      <h3>Foydalanuvchi aniqlanmadi</h3><p>Botdan kirish kerak</p></div>`;
+    return;
+  }
+  document.getElementById('orders-spinner').style.display = 'flex';
+  document.getElementById('orders-list').innerHTML = '';
+  try {
+    const res  = await fetch(`/api/user/orders?telegram_id=${tid}`);
+    const data = await res.json();
+    document.getElementById('orders-spinner').style.display = 'none';
+    const orders = data.orders || [];
+    if (!orders.length) {
+      document.getElementById('orders-list').innerHTML = `
+        <div class="orders-empty"><div class="empty-icon">📋</div>
+        <h3>Buyurtmalar yo'q</h3><p>Birinchi buyurtmangizni menyudan bering</p></div>`;
+      return;
+    }
+    document.getElementById('orders-list').innerHTML = orders.map(order => {
+      const dt = order.created_at
+        ? new Date(order.created_at).toLocaleString('uz-UZ', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+        : '';
+      const itemsHtml = (order.items || []).map(it => `
+        <div class="order-item-row">
+          <span>${esc(it.food_name)}</span>
+          <strong>${it.quantity} × ${fmt(it.unit_price)}</strong>
+        </div>`).join('');
+      return `
+      <div class="order-card">
+        <div class="order-card-header">
+          <span class="order-id">Buyurtma #${order.display_id}</span>
+          <span class="order-date">${dt}</span>
+        </div>
+        <div class="order-card-body">
+          ${itemsHtml}
+          <hr class="order-divider">
+          <div class="order-totals">
+            ${order.delivery_fee > 0 ? `<div class="order-total-line"><span>Yetkazish</span><span>${fmt(order.delivery_fee)}</span></div>` : ''}
+            ${order.discount_amount > 0 ? `<div class="order-total-line"><span>Chegirma</span><span>−${fmt(order.discount_amount)}</span></div>` : ''}
+            <div class="order-total-line main"><span>Jami</span><span>${fmt(order.total_price)}</span></div>
+          </div>
+          ${order.location_text ? `<div style="font-size:13px;color:var(--muted);margin-top:4px">📍 ${esc(order.location_text)}</div>` : ''}
+        </div>
+        <div class="order-status-row">
+          ${chipHtml(STATUS_LABELS, order.status)}
+          ${chipHtml(PAY_LABELS, order.payment_status)}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('orders-spinner').style.display = 'none';
+    toast('Buyurtmalar yuklanmadi', 'error');
+  }
+}
+
+// ── Checkout → send to bot ─────────────────────────────────
+function sendCartToBot() {
+  const items = cartItems();
+  if (!items.length) { toast('Avval menyudan taom tanlang', 'error'); return; }
+
+  const btn = document.getElementById('checkout-btn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Yuborilmoqda...';
+
+  sendCartViaApi(items, btn, origText);
+}
+
+async function sendCartViaApi(items, btn, origText) {
+  const restore = () => {
+    btn.disabled = false;
+    btn.textContent = origText;
+  };
+  const tid = getTelegramId();
+  if (!tid) {
+    restore();
+    toast('Telegram foydalanuvchi aniqlanmadi', 'error');
+    return;
+  }
+  try {
+    const fd = new FormData();
+    fd.append('telegram_id', tid);
+    fd.append('items_json', JSON.stringify(
+      items.map(i => ({ food_id: i.food_id, name: i.name, price: i.price, quantity: i.quantity }))
+    ));
+    const res  = await fetch('/api/user/cart/send', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      restore();
+      toast(data.detail || 'Xatolik yuz berdi', 'error');
+      return;
+    }
+    btn.textContent = '✅ Botga yuborildi!';
+    toast('Buyurtmani davom ettirish uchun botga o\'ting', 'success');
+    // 1.5 soniyadan keyin webappni yopamiz — foydalanuvchi botga qaytadi
+    setTimeout(() => { if (tg) tg.close(); else restore(); }, 1500);
+  } catch (_) {
+    restore();
+    toast('Server bilan ulanishda xato', 'error');
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Set user name in chip
+  const nameEl = document.getElementById('user-name');
+  if (nameEl) {
+    const name = FN();
+    nameEl.textContent = name !== 'Foydalanuvchi' ? name : '...';
+  }
+
+  renderCart();
+  updateBadges();
+  loadMenu();
+});
+</script>
+{% endblock %}

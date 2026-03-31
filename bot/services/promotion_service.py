@@ -20,7 +20,7 @@ class PromotionService:
     def apply(self, cart_items: list[dict], promotions: list[dict]) -> PromotionResult:
         subtotal = sum(item["price"] * item["quantity"] for item in cart_items)
         total_quantity = sum(item["quantity"] for item in cart_items)
-        delivery_fee = self.default_delivery_fee
+        delivery_fee = -1
         discount = 0
         summary: list[str] = []
         bonus_items: list[str] = []
@@ -31,14 +31,17 @@ class PromotionService:
                 if bool(config.get("free_delivery", True)):
                     delivery_fee = 0
                     summary.append(f"{promo['name']}: bepul yetkazib berish")
-                gift_name = str(config.get("free_item_name", "")).strip()
-                if gift_name:
-                    bonus_items.append(gift_name)
-                    summary.append(f"{promo['name']}: bonus {gift_name}")
+                bonus_text = str(config.get("bonus_text") or config.get("free_item_name") or "").strip()
+                if bonus_text:
+                    bonus_items.append(bonus_text)
+                    summary.append(f"{promo['name']}: bonus bor")
             elif promo_type == PromotionType.FREE_ITEM_BY_TOTAL and subtotal >= int(config.get("min_total", 0)):
-                gift_name = str(config.get("free_item_name", "Sovg'a ichimlik"))
-                bonus_items.append(gift_name)
-                summary.append(f"{promo['name']}: {gift_name}")
+                delivery_fee = 0
+                summary.append(f"{promo['name']}: bepul yetkazib berish")
+                bonus_text = str(config.get("bonus_text") or config.get("free_item_name") or "").strip()
+                if bonus_text:
+                    bonus_items.append(bonus_text)
+                    summary.append(f"{promo['name']}: bonus bor")
             elif promo_type == PromotionType.BUY_X_GET_Y:
                 target_food_id = int(config.get("food_id", 0))
                 buy_qty = int(config.get("buy_quantity", 0))
