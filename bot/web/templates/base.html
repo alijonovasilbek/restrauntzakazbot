@@ -17,12 +17,30 @@
 <script>
   // Initialize Telegram WebApp
   const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+  let cachedTelegramUser = null;
   if (tg) {
     tg.ready();
     tg.expand();
   }
+  async function ensureTelegramUser(retries = 30, delayMs = 150) {
+    for (let i = 0; i < retries; i += 1) {
+      const currentUser = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+      if (currentUser && currentUser.id) {
+        cachedTelegramUser = currentUser;
+        return currentUser;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    return cachedTelegramUser;
+  }
   function tgUser() {
-    return tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+    if (cachedTelegramUser) return cachedTelegramUser;
+    const currentUser = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+    if (currentUser && currentUser.id) {
+      cachedTelegramUser = currentUser;
+      return currentUser;
+    }
+    return null;
   }
   function queryParam(name) {
     return new URLSearchParams(window.location.search).get(name) || '';
@@ -33,12 +51,15 @@
   }
   function getFullName() {
     const u = tgUser();
-    return `${u?.first_name || queryParam('full_name') || ''}${u?.last_name ? ' ' + u.last_name : ''}`.trim() || 'Foydalanuvchi';
+    const firstName = u?.first_name || queryParam('full_name') || '';
+    const lastName = u?.last_name || queryParam('last_name') || '';
+    return `${firstName}${lastName ? ' ' + lastName : ''}`.trim() || 'Foydalanuvchi';
   }
   function getUsername() {
     const u = tgUser();
     return u?.username || queryParam('username') || '';
   }
+  ensureTelegramUser();
 </script>
 {% block scripts %}{% endblock %}
 </body>

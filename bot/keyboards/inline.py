@@ -166,7 +166,7 @@ def admin_food_edit_fields_keyboard(food_id: int) -> InlineKeyboardMarkup:
     )
 
 
-def admin_credentials_edit_keyboard() -> InlineKeyboardMarkup:
+def admin_settings_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Karta raqami", callback_data="admin_credentials:payment_card_number")],
@@ -174,6 +174,9 @@ def admin_credentials_edit_keyboard() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="Zakaz qabul vaqti", callback_data="admin_credentials:order_accept_until")],
             [InlineKeyboardButton(text="Yetkazish boshlanishi", callback_data="admin_credentials:delivery_start_time")],
             [InlineKeyboardButton(text="Yetkazish tugashi", callback_data="admin_credentials:delivery_end_time")],
+            [InlineKeyboardButton(text="Admin qo'shish", callback_data="admin_settings:add_admin")],
+            [InlineKeyboardButton(text="Admin o'chirish", callback_data="admin_settings:remove_admin")],
+            [InlineKeyboardButton(text="Adminlar ro'yxati", callback_data="admin_settings:list_admins")],
         ]
     )
 

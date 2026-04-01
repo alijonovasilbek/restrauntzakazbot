@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 from bot.fsm.states import AdminCredentialStates, AdminFoodStates, AdminPromotionStates
 from bot.keyboards.inline import (
-    admin_credentials_edit_keyboard,
+    admin_settings_keyboard,
     admin_date_picker_keyboard,
     admin_food_edit_fields_keyboard,
     admin_food_manage_keyboard,
@@ -32,12 +32,13 @@ from bot.repositories.food_repository import FoodRepository
 from bot.repositories.order_repository import OrderRepository
 from bot.repositories.promotion_repository import PromotionRepository
 from bot.repositories.user_repository import UserRepository
+from bot.services.admin_notifier import AdminNotifier
 from bot.services.broadcast_service import BroadcastService
 from bot.services.credential_service import CredentialService
 from bot.services.image_service import ImageService
 from bot.services.menu_service import today_local_date
 from bot.config import settings
-from bot.utils.formatters import format_food, format_order_summary
+from bot.utils.formatters import format_food, format_order_summary, order_display_id
 
 router = Router()
 
@@ -67,14 +68,32 @@ async def _safe_edit_text(message: Message, text: str, reply_markup) -> None:
 
 async def _show_credentials(message: Message, db) -> None:
     credentials = await CredentialService(CredentialRepository(db)).get_credentials()
+    admins = await UserRepository(db).list_admins()
+    admin_lines = [f"- {admin['full_name']} ({admin['telegram_id']})" for admin in admins]
     text = (
-        "To'lov va yetkazib berish sozlamalari:\n\n"
+        "Sozlamalar:\n\n"
         f"💳 Karta raqami: {credentials['payment_card_number']}\n"
         f"👤 Karta egasi: {credentials['payment_card_owner']}\n"
         f"📝 Zakaz qabul qilish: {credentials['order_accept_until']} gacha\n"
         f"🚚 Yetkazib berish: {credentials['delivery_start_time']} - {credentials['delivery_end_time']}"
     )
-    await message.answer(text, reply_markup=admin_credentials_edit_keyboard())
+    await message.answer(text, reply_markup=admin_settings_keyboard())
+
+
+async def _show_settings(message: Message, db) -> None:
+    credentials = await CredentialService(CredentialRepository(db)).get_credentials()
+    admins = await UserRepository(db).list_admins()
+    admin_lines = [f"- {admin['full_name']} ({admin['telegram_id']})" for admin in admins]
+    text = (
+        "Sozlamalar:\n\n"
+        f"Karta raqami: {credentials['payment_card_number']}\n"
+        f"Karta egasi: {credentials['payment_card_owner']}\n"
+        f"Zakaz qabul qilish: {credentials['order_accept_until']} gacha\n"
+        f"Yetkazib berish: {credentials['delivery_start_time']} - {credentials['delivery_end_time']}\n\n"
+        "Adminlar:\n"
+        + ("\n".join(admin_lines) if admin_lines else "- Hali admin yo'q")
+    )
+    await message.answer(text, reply_markup=admin_settings_keyboard())
 
 
 async def _show_admin_order(message: Message, db, index: int = 0, *, edit: bool = False) -> None:
@@ -487,11 +506,18 @@ async def broadcast_today_menu_message(message: Message, db, bot, is_admin: bool
     await message.answer(f"Broadcast yakunlandi. Yuborildi: {sent}, xato: {failed}")
 
 
+@router.message(F.text == "⚙️ Settings")
+async def settings_message(message: Message, db, is_admin: bool) -> None:
+    if not _is_admin(is_admin):
+        return
+    await _show_settings(message, db)
+
+
 @router.message(F.text == "💳 Kartalarni tahrirlash")
 async def credentials_message(message: Message, db, is_admin: bool) -> None:
     if not _is_admin(is_admin):
         return
-    await _show_credentials(message, db)
+    await _show_settings(message, db)
 
 
 @router.message(F.text == "📋 Buyurtmalar")
@@ -534,7 +560,70 @@ async def credentials_edit_value(message: Message, state: FSMContext, db) -> Non
     await CredentialRepository(db).update({field_name: value})
     await state.clear()
     await message.answer(f"{_credential_field_label(field_name)} yangilandi.")
-    await _show_credentials(message, db)
+    await _show_settings(message, db)
+
+
+@router.callback_query(F.data == "admin_settings:list_admins")
+async def settings_list_admins(callback: CallbackQuery, db, is_admin: bool) -> None:
+    if not _is_admin(is_admin):
+        await callback.answer()
+        return
+    await _show_settings(callback.message, db)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_settings:add_admin")
+async def settings_add_admin_start(callback: CallbackQuery, state: FSMContext, is_admin: bool) -> None:
+    if not _is_admin(is_admin):
+        await callback.answer()
+        return
+    await state.set_state(AdminCredentialStates.waiting_add_admin)
+    await callback.message.answer("Admin qo'shish uchun Telegram ID yuboring.")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_settings:remove_admin")
+async def settings_remove_admin_start(callback: CallbackQuery, state: FSMContext, is_admin: bool) -> None:
+    if not _is_admin(is_admin):
+        await callback.answer()
+        return
+    await state.set_state(AdminCredentialStates.waiting_remove_admin)
+    await callback.message.answer("Admin o'chirish uchun Telegram ID yuboring.")
+    await callback.answer()
+
+
+@router.message(AdminCredentialStates.waiting_add_admin)
+async def settings_add_admin_value(message: Message, state: FSMContext, db) -> None:
+    value = (message.text or "").strip()
+    if not value.isdigit():
+        await message.answer("Telegram ID raqam bo'lishi kerak.")
+        return
+    telegram_id = int(value)
+    await UserRepository(db).grant_admin(telegram_id)
+    await state.clear()
+    await message.answer(f"{telegram_id} admin qilib qo'shildi.")
+    await _show_settings(message, db)
+
+
+@router.message(AdminCredentialStates.waiting_remove_admin)
+async def settings_remove_admin_value(message: Message, state: FSMContext, db) -> None:
+    value = (message.text or "").strip()
+    if not value.isdigit():
+        await message.answer("Telegram ID raqam bo'lishi kerak.")
+        return
+    telegram_id = int(value)
+    user_repo = UserRepository(db)
+    admin = await user_repo.get_by_telegram_id(telegram_id)
+    if not admin or not bool(admin["is_admin"]):
+        await message.answer("Bu foydalanuvchi admin emas.")
+        return
+    if await user_repo.count_admins() <= 1:
+        await message.answer("Oxirgi adminni o'chirib bo'lmaydi.")
+        return
+    await user_repo.revoke_admin(telegram_id)
+    await state.clear()
+    await message.answer(f"{telegram_id} adminlikdan olindi.")
+    await _show_settings(message, db)
 
 
 @router.callback_query(F.data.startswith("admin_orders_page:"))
@@ -571,7 +660,7 @@ async def admin_order_cancel(callback: CallbackQuery, db, is_admin: bool, bot) -
     await order_repo.update_status(order_id, status=OrderStatus.CANCELED, payment_status=PaymentStatus.REFUNDED)
     customer = await user_repo.get_by_id(int(order["user_id"]))
     if customer:
-        await bot.send_message(customer["telegram_id"], f"Buyurtma #{order_id} bekor qilindi. To'lov summasi qaytariladi.")
+        await bot.send_message(customer["telegram_id"], f"Buyurtma #{order_display_id(order_id)} bekor qilindi. To'lov summasi qaytariladi.")
     await _show_admin_order(callback.message, db, index=index, edit=True)
     await callback.answer("Buyurtma bekor qilindi")
 
@@ -877,13 +966,17 @@ async def review_order(callback: CallbackQuery, db, is_admin: bool, bot) -> None
             await food_repo.increase_stock(int(item["food_id"]), int(item["quantity"]))
 
     await order_repo.update_status(order_id, status=new_status, payment_status=payment_status)
+    updated_order = await order_repo.get_order(order_id)
+    items = await order_repo.get_items(order_id)
+    payment = await order_repo.get_latest_payment(order_id)
     customer = await user_repo.get_by_id(order["user_id"])
     if customer:
         text = (
-            f"Buyurtma #{order_id} qabul qilindi. Tez orada tayyorlanadi."
+            f"Buyurtma #{order_display_id(order_id)} qabul qilindi. Tez orada tayyorlanadi."
             if decision == "accept"
-            else f"Buyurtma #{order_id} rad etildi."
+            else f"Buyurtma #{order_display_id(order_id)} rad etildi."
         )
         await bot.send_message(customer["telegram_id"], text)
-    await callback.message.edit_reply_markup(reply_markup=None)
+    admin_user = await user_repo.get_by_id(int(updated_order["user_id"]))
+    await AdminNotifier().refresh_order_message(bot, callback.message, updated_order, items, admin_user, payment)
     await callback.answer("Yangilandi")

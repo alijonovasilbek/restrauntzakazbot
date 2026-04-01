@@ -25,6 +25,23 @@ class ImageService:
         await bot.delete_message(chat_id=chat_id, message_id=temp_message.message_id)
         return normalized_file_id
 
+    async def normalize_and_store_bytes(
+        self,
+        bot: Bot,
+        chat_id: int,
+        payload: bytes,
+        *,
+        filename: str = "food.jpg",
+    ) -> str:
+        image_bytes = self._normalize_image_bytes(payload)
+        temp_message = await bot.send_photo(
+            chat_id=chat_id,
+            photo=BufferedInputFile(image_bytes, filename=filename),
+        )
+        normalized_file_id = temp_message.photo[-1].file_id
+        await bot.delete_message(chat_id=chat_id, message_id=temp_message.message_id)
+        return normalized_file_id
+
     def _normalize_image_bytes(self, payload: bytes) -> bytes:
         with Image.open(BytesIO(payload)) as original:
             image = ImageOps.exif_transpose(original).convert("RGB")

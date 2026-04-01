@@ -264,7 +264,7 @@ async def _finalize_order(message: Message, state: FSMContext, db, telegram_id: 
             f"{bonus_text}\n\n"
             f"💳 Karta raqami: <code>{credentials['payment_card_number']}</code>\n"
             f"👤 Karta egasi: {credentials['payment_card_owner']}\n\n"
-            "To'lov qilgach, chekni rasm yoki PDF ko'rinishida yuboring."
+            "❗❗❗ To'lov qilgach, chekni rasm yoki PDF ko'rinishida yuboring."
         ),
         reply_markup=main_menu_keyboard(),
     )
@@ -327,7 +327,7 @@ async def location_fallback_handler(message: Message) -> None:
 
 @router.message(CheckoutStates.waiting_receipt)
 async def receipt_fallback_handler(message: Message) -> None:
-    await message.answer("Chekni rasm yoki PDF ko'rinishida yuboring.")
+    await message.answer("❗❗❗ Chekni rasm yoki PDF ko'rinishida yuboring.")
 
 
 @router.message(F.web_app_data)

@@ -24,6 +24,8 @@ class AdminPromotionStates(StatesGroup):
 
 class AdminCredentialStates(StatesGroup):
     waiting_value = State()
+    waiting_add_admin = State()
+    waiting_remove_admin = State()
 
 
 class CheckoutStates(StatesGroup):

@@ -11,9 +11,12 @@ from redis.asyncio import from_url as redis_from_url
 import uvicorn
 
 from bot.config import settings
+from bot.database.engine import get_connection
+from bot.database.session import DatabaseSession
 from bot.logging_config import configure_logging
 from bot.middlewares.admin import AdminFlagMiddleware
 from bot.middlewares.db import DbSessionMiddleware
+from bot.repositories.user_repository import UserRepository
 from bot.routers import admin, common, user
 from bot.shared import set_dispatcher
 from bot.web.app import app as web_app
@@ -21,6 +24,8 @@ from bot.web.app import app as web_app
 
 async def main() -> None:
     configure_logging()
+    async with get_connection() as connection:
+        await UserRepository(DatabaseSession(connection)).bootstrap_legacy_admins(settings.legacy_admin_ids)
     bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     storage = MemoryStorage()
     if settings.use_redis:

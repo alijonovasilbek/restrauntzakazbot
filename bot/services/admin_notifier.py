@@ -7,7 +7,7 @@ from aiogram.types import FSInputFile
 
 from bot.config import settings
 from bot.keyboards.inline import admin_order_review_keyboard
-from bot.utils.formatters import ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS
+from bot.utils.formatters import ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS, order_display_id
 
 
 def order_map_link(latitude: float, longitude: float) -> str:
@@ -30,15 +30,16 @@ def bonus_label(promotion_summary: str | None) -> str:
 
 
 class AdminNotifier:
-    async def notify_new_order(self, bot: Bot, order: dict, items: list[dict], user: dict, payment: dict | None) -> int:
+    def build_order_text(self, order: dict, items: list[dict], user: dict, payment: dict | None) -> str:
         has_location = float(order["location_latitude"]) != 0.0 or float(order["location_longitude"]) != 0.0
         location_text = order_map_link(order["location_latitude"], order["location_longitude"]) if has_location else "x"
         address_text = "x" if has_location else (order["location_text"] or "x")
         order_status = ORDER_STATUS_LABELS.get(str(order["status"]), str(order["status"]))
         payment_status = PAYMENT_STATUS_LABELS.get(str(order["payment_status"]), str(order["payment_status"]))
+        display_id = order_display_id(int(order["id"]))
         lines = [
             "Yangi buyurtma",
-            f"Buyurtma ID: {order['id']}",
+            f"Buyurtma ID: {display_id}",
             f"Foydalanuvchi: {user['full_name']}",
             f"Username: @{user['username']}" if user["username"] else "Username: -",
             f"Telefon: {order['phone']}",
@@ -60,7 +61,10 @@ class AdminNotifier:
                 bonus_label(order["promotion_summary"]),
             ]
         )
-        text = "\n".join(lines)
+        return "\n".join(lines)
+
+    async def notify_new_order(self, bot: Bot, order: dict, items: list[dict], user: dict, payment: dict | None) -> int:
+        text = self.build_order_text(order, items, user, payment)
         markup = admin_order_review_keyboard(int(order["id"]))
         if payment and payment["type"] == "photo":
             message = await bot.send_photo(settings.admin_group_id, photo=payment["file_id"], caption=text, reply_markup=markup)
@@ -76,3 +80,10 @@ class AdminNotifier:
         else:
             message = await bot.send_message(settings.admin_group_id, text, reply_markup=markup)
         return int(message.message_id)
+
+    async def refresh_order_message(self, bot: Bot, message, order: dict, items: list[dict], user: dict, payment: dict | None) -> None:
+        text = self.build_order_text(order, items, user, payment)
+        if getattr(message, "photo", None) or getattr(message, "document", None):
+            await message.edit_caption(caption=text, reply_markup=None)
+            return
+        await message.edit_text(text, reply_markup=None)

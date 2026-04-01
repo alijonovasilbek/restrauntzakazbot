@@ -29,6 +29,7 @@ from bot.repositories.user_repository import UserRepository
 from bot.services.admin_notifier import AdminNotifier
 from bot.services.broadcast_service import BroadcastService
 from bot.services.credential_service import CredentialService
+from bot.services.image_service import ImageService
 from bot.services.menu_service import today_local_date
 from bot.fsm.states import CheckoutStates
 from bot.keyboards.reply import request_location_keyboard, request_phone_keyboard
@@ -56,8 +57,8 @@ async def get_db() -> DatabaseSession:
         yield DatabaseSession(connection)
 
 
-def require_admin(telegram_id: int) -> None:
-    if telegram_id not in settings.admin_ids:
+async def require_admin(db: DatabaseSession, telegram_id: int) -> None:
+    if not await UserRepository(db).is_admin(telegram_id):
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
@@ -320,16 +321,31 @@ async def webapp_entry() -> HTMLResponse:
       <script>
         async function boot() {
           const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-          if (tg) tg.ready();
-          const user = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+          if (tg) {
+            tg.ready();
+            tg.expand();
+          }
+
+          async function waitForTelegramUser() {
+            for (let i = 0; i < 20; i += 1) {
+              const currentUser = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+              if (currentUser && currentUser.id) return currentUser;
+              await new Promise((resolve) => setTimeout(resolve, 150));
+            }
+            return null;
+          }
+
+          const user = await waitForTelegramUser();
           if (!user || !user.id) {
-            window.location.replace('/web/user');
+            window.location.replace('/web/user?webapp_error=user_not_found');
             return;
           }
           const res = await fetch(`/api/webapp/resolve?telegram_id=${user.id}`);
           const data = await res.json();
           const target = data.role === 'admin' ? '/web/admin' : '/web/user';
-          window.location.replace(`${target}?tg_id=${user.id}&full_name=${encodeURIComponent(user.first_name || '')}&username=${encodeURIComponent(user.username || '')}`);
+          window.location.replace(
+            `${target}?tg_id=${user.id}&full_name=${encodeURIComponent(user.first_name || '')}&last_name=${encodeURIComponent(user.last_name || '')}&username=${encodeURIComponent(user.username || '')}`
+          );
         }
         boot();
       </script>
@@ -352,8 +368,8 @@ async def admin_page(request: Request) -> HTMLResponse:
 
 
 @app.get("/api/webapp/resolve")
-async def resolve_webapp_role(telegram_id: int) -> dict:
-    return {"role": "admin" if telegram_id in settings.admin_ids else "user"}
+async def resolve_webapp_role(telegram_id: int, db: DatabaseSession = Depends(get_db)) -> dict:
+    return {"role": "admin" if await UserRepository(db).is_admin(telegram_id) else "user"}
 
 
 @app.post("/api/user/sync")
@@ -505,7 +521,7 @@ async def upload_receipt(
 
 @app.get("/api/admin/bootstrap")
 async def admin_bootstrap(telegram_id: int, db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     foods = await FoodRepository(db).list_today_all(today_local_date(), include_inactive=True)
     promotions = await PromotionRepository(db).list_all()
     credentials = await _get_credentials_dict(db)
@@ -529,7 +545,7 @@ async def admin_bootstrap(telegram_id: int, db: DatabaseSession = Depends(get_db
 
 @app.get("/api/admin/foods")
 async def admin_foods(telegram_id: int, menu_date: str | None = None, db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     selected_date = date.fromisoformat(menu_date) if menu_date else today_local_date()
     foods = await FoodRepository(db).list_by_date(selected_date, include_inactive=True)
     return {"foods": [_serialize_food(food) for food in foods]}
@@ -546,7 +562,7 @@ async def admin_food_create(
     image_file_id: str = Form(default=""),
     db: DatabaseSession = Depends(get_db),
 ) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     food_id = await FoodRepository(db).create(
         {
             "menu_date": date.fromisoformat(menu_date),
@@ -561,9 +577,36 @@ async def admin_food_create(
     return {"id": food_id}
 
 
+@app.post("/api/admin/foods/upload-image")
+async def admin_food_upload_image(
+    telegram_id: int = Form(...),
+    image: UploadFile = File(...),
+    db: DatabaseSession = Depends(get_db),
+) -> dict:
+    await require_admin(db, telegram_id)
+    content = await image.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Rasm bo'sh")
+
+    bot = Bot(token=settings.bot_token)
+    try:
+        file_id = await ImageService().normalize_and_store_bytes(
+            bot,
+            telegram_id,
+            content,
+            filename=image.filename or "food.jpg",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Rasmni yuklashda xato") from exc
+    finally:
+        await bot.session.close()
+
+    return {"file_id": file_id}
+
+
 @app.put("/api/admin/foods/{food_id}")
 async def admin_food_update(food_id: int, payload: dict, telegram_id: int = Query(...), db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     if "menu_date" in payload:
         payload["menu_date"] = date.fromisoformat(payload["menu_date"])
     await FoodRepository(db).update(food_id, payload)
@@ -572,14 +615,14 @@ async def admin_food_update(food_id: int, payload: dict, telegram_id: int = Quer
 
 @app.post("/api/admin/foods/{food_id}/deactivate")
 async def admin_food_deactivate(food_id: int, telegram_id: int = Form(...), db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     await FoodRepository(db).deactivate(food_id)
     return {"ok": True}
 
 
 @app.get("/api/admin/promotions")
 async def admin_promotions(telegram_id: int, db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     promotions = await PromotionRepository(db).list_all()
     return {"promotions": [_serialize_promotion(promo) for promo in promotions]}
 
@@ -592,7 +635,7 @@ async def admin_promotion_create(
     config_json: str = Form(...),
     db: DatabaseSession = Depends(get_db),
 ) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     promotion_id = await PromotionRepository(db).create(
         {
             "name": name,
@@ -611,27 +654,27 @@ async def admin_promotion_toggle(
     is_active: int = Form(...),
     db: DatabaseSession = Depends(get_db),
 ) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     await PromotionRepository(db).toggle(promotion_id, bool(is_active))
     return {"ok": True}
 
 
 @app.delete("/api/admin/promotions/{promotion_id}")
 async def admin_promotion_delete(promotion_id: int, telegram_id: int = Query(...), db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     await PromotionRepository(db).delete(promotion_id)
     return {"ok": True}
 
 
 @app.get("/api/admin/credentials")
 async def admin_credentials(telegram_id: int, db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     return await _get_credentials_dict(db)
 
 
 @app.put("/api/admin/credentials")
 async def admin_credentials_update(payload: dict, telegram_id: int = Query(...), db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     await CredentialRepository(db).update(payload)
     return {"ok": True}
 
@@ -643,14 +686,14 @@ async def admin_stats(
     selected_date: str | None = Query(default=None),
     db: DatabaseSession = Depends(get_db),
 ) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     date_value = date.fromisoformat(selected_date) if selected_date else None
     return await _stats_for_period(db, period, date_value)
 
 
 @app.get("/api/admin/orders")
 async def admin_orders(telegram_id: int, db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     order_repo = OrderRepository(db)
     user_repo = UserRepository(db)
     orders = await order_repo.list_all_orders()
@@ -672,7 +715,7 @@ async def _notify_customer(telegram_id: int, text: str) -> None:
 
 @app.post("/api/admin/orders/{order_id}/accept")
 async def admin_order_accept(order_id: int, telegram_id: int = Form(...), db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     repo = OrderRepository(db)
     order = await repo.get_order(order_id)
     if not order:
@@ -688,7 +731,7 @@ async def admin_order_accept(order_id: int, telegram_id: int = Form(...), db: Da
 
 @app.post("/api/admin/orders/{order_id}/reject")
 async def admin_order_reject(order_id: int, telegram_id: int = Form(...), db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     repo = OrderRepository(db)
     food_repo = FoodRepository(db)
     order = await repo.get_order(order_id)
@@ -708,7 +751,7 @@ async def admin_order_reject(order_id: int, telegram_id: int = Form(...), db: Da
 
 @app.post("/api/admin/orders/{order_id}/cancel")
 async def admin_order_cancel(order_id: int, telegram_id: int = Form(...), db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     repo = OrderRepository(db)
     food_repo = FoodRepository(db)
     order = await repo.get_order(order_id)
@@ -728,7 +771,7 @@ async def admin_order_cancel(order_id: int, telegram_id: int = Form(...), db: Da
 
 @app.post("/api/admin/broadcast")
 async def admin_broadcast(telegram_id: int = Form(...), db: DatabaseSession = Depends(get_db)) -> dict:
-    require_admin(telegram_id)
+    await require_admin(db, telegram_id)
     foods = await FoodRepository(db).list_today_all(today_local_date())
     users = await UserRepository(db).list_all()
     promotions = await PromotionRepository(db).list_active()

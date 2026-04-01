@@ -620,6 +620,62 @@ p { margin: 0; }
   color: var(--muted);
 }
 
+.user-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(21, 37, 24, .42);
+  backdrop-filter: blur(4px);
+}
+
+.user-modal.open {
+  display: flex;
+}
+
+.user-modal-card {
+  width: min(100%, 360px);
+  background: #fff;
+  border: 1.5px solid var(--brand-mid);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.user-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 18px 10px;
+}
+
+.user-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand-dark);
+}
+
+.user-modal-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.user-modal-body {
+  padding: 0 18px 18px;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
 /* ─── Spinner ────────────────────────────────────────── */
 .spinner-wrap {
   padding: 40px;

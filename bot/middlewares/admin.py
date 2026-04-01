@@ -6,7 +6,9 @@ from typing import Any
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, User
 
-from bot.config import settings
+from bot.database.engine import get_connection
+from bot.database.session import DatabaseSession
+from bot.repositories.user_repository import UserRepository
 
 
 class AdminFlagMiddleware(BaseMiddleware):
@@ -17,5 +19,11 @@ class AdminFlagMiddleware(BaseMiddleware):
         data: dict[str, Any],
     ) -> Any:
         user: User | None = data.get("event_from_user")
-        data["is_admin"] = bool(user and user.id in settings.admin_ids)
+        if user is None:
+            data["is_admin"] = False
+            return await handler(event, data)
+
+        async with get_connection() as connection:
+            db = DatabaseSession(connection)
+            data["is_admin"] = await UserRepository(db).is_admin(user.id)
         return await handler(event, data)

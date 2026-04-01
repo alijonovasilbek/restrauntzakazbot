@@ -18,6 +18,7 @@ users = Table(
     Column("full_name", String(255), nullable=False),
     Column("username", String(255)),
     Column("phone", String(32)),
+    Column("is_admin", Boolean, nullable=False, default=False, server_default="false"),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     Column("last_ordered_at", DateTime(timezone=True)),
 )

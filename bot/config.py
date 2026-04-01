@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     database_url: str = Field(alias="DATABASE_URL")
     alembic_database_url: str = Field(alias="ALEMBIC_DATABASE_URL")
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
-    admin_ids_raw: str = Field(alias="ADMIN_IDS")
+    admin_ids_raw: str = Field(default="", alias="ADMIN_IDS")
     admin_group_id: int = Field(alias="ADMIN_GROUP_ID")
     payment_card_number: str = Field(alias="PAYMENT_CARD_NUMBER")
     payment_card_owner: str = Field(alias="PAYMENT_CARD_OWNER")
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def admin_ids(self) -> set[int]:
+    def legacy_admin_ids(self) -> set[int]:
         return {int(item.strip()) for item in self.admin_ids_raw.split(",") if item.strip()}
 
 

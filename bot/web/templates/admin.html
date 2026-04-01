@@ -1,148 +1,715 @@
 {% extends "base.html" %}
-{% block title %}Bon Appétit — Admin{% endblock %}
+{% block title %}Bon Appétit - Admin{% endblock %}
 
 {% block body %}
-<div style="min-height:100vh;background:var(--bg,#f4faf5);font-family:'Segoe UI',system-ui,sans-serif;color:#1a2e1c">
+<style>
+  .admin-shell {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background:
+      radial-gradient(circle at top left, rgba(102, 187, 106, 0.14), transparent 32%),
+      linear-gradient(180deg, #f7fbf7 0%, #fdfefd 100%);
+    color: #18301d;
+    padding-bottom: 88px;
+  }
 
-  <!-- Header -->
-  <header style="background:#fff;border-bottom:1.5px solid #c8e6c9;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(30,80,30,.08)">
-    <div>
-      <div style="font-size:20px;font-weight:800;background:linear-gradient(135deg,#2e7d32,#43a047);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Bon Appétit</div>
-      <div style="font-size:11px;color:#5a7a5e;text-transform:uppercase;letter-spacing:.06em">Admin panel</div>
+  .admin-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 18px 14px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(129, 199, 132, 0.35);
+  }
+
+  .admin-brand {
+    min-width: 0;
+  }
+
+  .admin-brand-title {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: #2e7d32;
+  }
+
+  .admin-brand-sub {
+    margin-top: 4px;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6b8c71;
+  }
+
+  .admin-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .admin-user-chip {
+    max-width: 128px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #eef7ee;
+    border: 1px solid #cce6cf;
+    color: #5f7e65;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-refresh-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: #43a047;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    box-shadow: 0 10px 20px rgba(67, 160, 71, 0.2);
+  }
+
+  .admin-main {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 16px 14px 0;
+  }
+
+  .admin-status {
+    min-height: 22px;
+    margin: 0 2px 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #2e7d32;
+  }
+
+  .admin-pane {
+    display: none;
+  }
+
+  .admin-pane.active {
+    display: block;
+  }
+
+  .admin-stack {
+    display: grid;
+    gap: 14px;
+  }
+
+  .admin-card {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1.5px solid #cfe8d2;
+    border-radius: 24px;
+    padding: 18px;
+    box-shadow: 0 10px 30px rgba(40, 92, 46, 0.06);
+  }
+
+  .admin-card-title {
+    margin: 0 0 14px;
+    font-size: 18px;
+    font-weight: 800;
+    color: #17321b;
+  }
+
+  .admin-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-field {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    color: #58745d;
+  }
+
+  .admin-field.full {
+    grid-column: 1 / -1;
+  }
+
+  .admin-input,
+  .admin-select,
+  .admin-textarea {
+    width: 100%;
+    min-width: 0;
+    border: 1.5px solid #cfe8d2;
+    border-radius: 16px;
+    padding: 12px 14px;
+    background: #f7fbf7;
+    color: #17321b;
+    outline: none;
+  }
+
+  .admin-textarea {
+    min-height: 104px;
+    resize: vertical;
+  }
+
+  .admin-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+
+  .admin-btn {
+    min-height: 46px;
+    padding: 0 18px;
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .admin-btn.primary {
+    background: #43a047;
+    color: #fff;
+  }
+
+  .admin-btn.secondary {
+    background: #edf7ee;
+    color: #2e7d32;
+    border: 1px solid #cfe8d2;
+  }
+
+  .admin-btn.warn {
+    background: #ef6c00;
+    color: #fff;
+  }
+
+  .admin-btn.danger {
+    background: #c62828;
+    color: #fff;
+  }
+
+  .stat-filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .stat-filter-btn {
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 14px;
+    background: #edf7ee;
+    border: 1px solid #cfe8d2;
+    color: #2e7d32;
+    font-weight: 700;
+  }
+
+  .stat-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-box {
+    border-radius: 18px;
+    padding: 14px;
+    background: linear-gradient(135deg, #f6fbf6, #f0f7f0);
+    border: 1px solid #dcefdc;
+  }
+
+  .stat-box-label {
+    font-size: 12px;
+    color: #6d8972;
+  }
+
+  .stat-box-value {
+    margin-top: 6px;
+    font-size: 22px;
+    font-weight: 800;
+    color: #17321b;
+  }
+
+  .stat-list {
+    margin-top: 12px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: #f7fbf7;
+    border: 1px solid #e1f0e3;
+    color: #56705b;
+    font-size: 14px;
+  }
+
+  .stat-row strong {
+    color: #17321b;
+  }
+
+  .admin-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .entity-card {
+    border: 1px solid #dcefdc;
+    border-radius: 18px;
+    padding: 14px;
+    background: #fbfefb;
+  }
+
+  .entity-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: #17321b;
+  }
+
+  .entity-meta {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #65826a;
+  }
+
+  .entity-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .promo-columns {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+
+  .order-card {
+    border: 1px solid #dcefdc;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .order-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    background: #eef7ee;
+    border-bottom: 1px solid #dcefdc;
+  }
+
+  .order-card-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #215929;
+  }
+
+  .order-card-status {
+    font-size: 12px;
+    color: #66836b;
+  }
+
+  .order-card-body {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    font-size: 14px;
+  }
+
+  .order-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: #58715d;
+  }
+
+  .order-item strong,
+  .order-total strong {
+    color: #17321b;
+  }
+
+  .order-total {
+    padding-top: 8px;
+    border-top: 1px dashed #d8ead9;
+  }
+
+  .admin-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid rgba(129, 199, 132, 0.3);
+    backdrop-filter: blur(12px);
+  }
+
+  .admin-nav-btn {
+    min-height: 56px;
+    border-radius: 18px;
+    background: #f1f8f1;
+    color: #638168;
+    display: grid;
+    place-items: center;
+    gap: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    padding: 6px 4px;
+  }
+
+  .admin-nav-btn strong {
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 800;
+  }
+
+  .admin-nav-btn.active {
+    background: #43a047;
+    color: #fff;
+    box-shadow: 0 10px 20px rgba(67, 160, 71, 0.22);
+  }
+
+  .admin-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(18, 34, 22, 0.42);
+    backdrop-filter: blur(4px);
+  }
+
+  .admin-modal.open {
+    display: flex;
+  }
+
+  .admin-modal-card {
+    width: min(100%, 380px);
+    border-radius: 24px;
+    background: #fff;
+    border: 1px solid #d8ead9;
+    box-shadow: 0 22px 44px rgba(24, 48, 29, 0.18);
+    overflow: hidden;
+  }
+
+  .admin-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px 12px;
+  }
+
+  .admin-modal-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #17321b;
+  }
+
+  .admin-modal-close {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: #f1f8f1;
+    color: #547059;
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .admin-modal-body {
+    padding: 0 18px 18px;
+    color: #58715d;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .admin-modal-card.success .admin-modal-title {
+    color: #2e7d32;
+  }
+
+  .admin-modal-card.error .admin-modal-title {
+    color: #c62828;
+  }
+
+  .admin-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  @media (max-width: 760px) {
+    .admin-grid,
+    .stat-grid,
+    .promo-columns {
+      grid-template-columns: 1fr;
+    }
+
+    .admin-card {
+      padding: 16px;
+      border-radius: 22px;
+    }
+  }
+
+  @media (min-width: 900px) {
+    .admin-bottom-nav {
+      max-width: 980px;
+      margin: 0 auto;
+      left: 50%;
+      transform: translateX(-50%);
+      right: auto;
+      width: 100%;
+      border-radius: 18px 18px 0 0;
+    }
+  }
+</style>
+
+<div class="admin-shell">
+  <header class="admin-header">
+    <div class="admin-brand">
+      <div class="admin-brand-title">Bon Appétit</div>
+      <div class="admin-brand-sub">Admin Panel</div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <span id="admin-name" style="font-size:13px;color:#5a7a5e;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:999px;padding:5px 12px">...</span>
-      <button onclick="bootstrapAdmin()" style="background:#43a047;color:#fff;border:none;border-radius:10px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer;font-size:13px">↻</button>
+    <div class="admin-header-actions">
+      <div id="admin-name" class="admin-user-chip">...</div>
+      <button class="admin-refresh-btn" onclick="bootstrapAdmin()" title="Yangilash">↻</button>
     </div>
   </header>
 
-  <div style="max-width:900px;margin:0 auto;padding:14px">
+  <main class="admin-main">
+    <div id="a-status" class="admin-status"></div>
 
-    <!-- Status bar -->
-    <div id="a-status" style="min-height:20px;font-weight:700;font-size:14px;margin-bottom:10px;color:#2e7d32"></div>
+    <section class="admin-pane active" id="pane-stats">
+      <div class="admin-stack">
+        <div class="admin-card">
+          <div class="stat-filter-row">
+            <button class="stat-filter-btn" onclick="loadStats('today')">Bugun</button>
+            <button class="stat-filter-btn" onclick="loadStats('week')">Hafta</button>
+            <button class="stat-filter-btn" onclick="loadStats('month')">Oy</button>
+            <button class="admin-btn primary" onclick="sendBroadcast()">Menyuni yuborish</button>
+          </div>
+          <h2 class="admin-card-title">Statistika</h2>
+          <div id="a-stats">Yuklanmoqda...</div>
+        </div>
 
-    <!-- Actions row -->
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-      <button onclick="sendBroadcast()" style="background:#2e7d32;color:#fff;border:none;border-radius:12px;padding:10px 18px;font:inherit;font-weight:700;cursor:pointer">📢 Menyuni yuborish</button>
-      <button onclick="loadStats('today')" style="background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer">📊 Bugun</button>
-      <button onclick="loadStats('week')" style="background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer">Hafta</button>
-      <button onclick="loadStats('month')" style="background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer">Oy</button>
-    </div>
-
-    <!-- Stats -->
-    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
-      <h2 style="margin:0 0 12px;font-size:18px">📊 Statistika</h2>
-      <div id="a-stats" style="display:grid;gap:6px;font-size:14px;color:#5a7a5e">Yuklanmoqda...</div>
-    </section>
-
-    <!-- Credentials -->
-    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
-      <h2 style="margin:0 0 12px;font-size:18px">💳 Sozlamalar</h2>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Karta raqami
-          <input id="c-card" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Karta egasi
-          <input id="c-owner" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Qabul vaqti (HH:MM)
-          <input id="c-accept" type="text" placeholder="11:30" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Yetkazish boshlanishi
-          <input id="c-start" type="text" placeholder="12:00" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Yetkazish tugashi
-          <input id="c-end" type="text" placeholder="14:00" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
+        <div class="admin-card">
+          <h2 class="admin-card-title">Sozlamalar</h2>
+          <div class="admin-grid">
+            <label class="admin-field">Karta raqami
+              <input id="c-card" class="admin-input" type="text">
+            </label>
+            <label class="admin-field">Karta egasi
+              <input id="c-owner" class="admin-input" type="text">
+            </label>
+            <label class="admin-field">Qabul vaqti (HH:MM)
+              <input id="c-accept" class="admin-input" type="text" placeholder="11:30">
+            </label>
+            <label class="admin-field">Yetkazish boshlanishi
+              <input id="c-start" class="admin-input" type="text" placeholder="12:00">
+            </label>
+            <label class="admin-field full">Yetkazish tugashi
+              <input id="c-end" class="admin-input" type="text" placeholder="14:00">
+            </label>
+          </div>
+          <div class="admin-actions">
+            <button class="admin-btn primary" onclick="saveCredentials()">Saqlash</button>
+          </div>
+        </div>
       </div>
-      <button onclick="saveCredentials()" style="margin-top:12px;background:#43a047;color:#fff;border:none;border-radius:12px;padding:10px 20px;font:inherit;font-weight:700;cursor:pointer">Saqlash</button>
     </section>
 
-    <!-- Add food -->
-    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
-      <h2 style="margin:0 0 12px;font-size:18px">🍲 Ovqat qo'shish</h2>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Sana
-          <input id="f-date" type="date" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Nomi
-          <input id="f-name" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Narxi (so'm)
-          <input id="f-price" type="number" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e">Soni (ta)
-          <input id="f-quantity" type="number" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;grid-column:1/-1">Tavsif
-          <textarea id="f-description" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5;resize:vertical;min-height:70px"></textarea>
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;grid-column:1/-1">Telegram image_file_id
-          <input id="f-image" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
+    <section class="admin-pane" id="pane-foods">
+      <div class="admin-stack">
+        <div class="admin-card">
+          <h2 class="admin-card-title">Ovqat qo'shish</h2>
+          <div class="admin-grid">
+            <label class="admin-field">Sana
+              <input id="f-date" class="admin-input" type="date">
+            </label>
+            <label class="admin-field">Nomi
+              <input id="f-name" class="admin-input" type="text">
+            </label>
+            <label class="admin-field">Narxi (so'm)
+              <input id="f-price" class="admin-input" type="number">
+            </label>
+            <label class="admin-field">Soni (ta)
+              <input id="f-quantity" class="admin-input" type="number">
+            </label>
+            <label class="admin-field full">Tavsif
+              <textarea id="f-description" class="admin-textarea"></textarea>
+            </label>
+            <label class="admin-field full">Telegram image_file_id
+              <input id="f-image" class="admin-input" type="text">
+            </label>
+            <label class="admin-field full">Rasm yuklash
+              <input id="f-image-upload" class="admin-input" type="file" accept="image/*">
+            </label>
+          </div>
+          <div class="admin-actions">
+            <button class="admin-btn primary" id="create-food-btn" onclick="createFood()">Qo'shish</button>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <h2 class="admin-card-title">Taomlar</h2>
+          <div id="a-foods" class="admin-list"></div>
+        </div>
       </div>
-      <button onclick="createFood()" style="margin-top:12px;background:#43a047;color:#fff;border:none;border-radius:12px;padding:10px 20px;font:inherit;font-weight:700;cursor:pointer">Qo'shish</button>
     </section>
 
-    <!-- Foods list -->
-    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
-      <h2 style="margin:0 0 12px;font-size:18px">🍽 Bugungi menyu</h2>
-      <div id="a-foods" style="display:grid;gap:10px"></div>
+    <section class="admin-pane" id="pane-promotions">
+      <div class="promo-columns">
+        <div class="admin-card">
+          <h2 class="admin-card-title">Aksiya qo'shish</h2>
+          <div class="admin-grid">
+            <label class="admin-field full">Nomi
+              <input id="p-name" class="admin-input" type="text">
+            </label>
+            <label class="admin-field full">Turi
+              <select id="p-type" class="admin-select">
+                <option value="free_delivery_by_quantity">Miqdor bo'yicha bepul yetkazib berish</option>
+                <option value="free_item_by_total">Summa bo'yicha bonus</option>
+                <option value="buy_x_get_y">X ta olsang Y ta bonus</option>
+              </select>
+            </label>
+            <label class="admin-field full">Config JSON
+              <textarea id="p-config" class="admin-textarea">{}</textarea>
+            </label>
+          </div>
+          <div class="admin-actions">
+            <button class="admin-btn primary" onclick="createPromotion()">Saqlash</button>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <h2 class="admin-card-title">Aksiyalar</h2>
+          <div id="a-promotions" class="admin-list"></div>
+        </div>
+      </div>
     </section>
 
-    <!-- Promotions -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
-        <h2 style="margin:0 0 12px;font-size:18px">🎁 Aksiya qo'shish</h2>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;margin-bottom:8px">Nomi
-          <input id="p-name" type="text" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;margin-bottom:8px">Turi
-          <select id="p-type" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5">
-            <option value="free_delivery_by_quantity">free_delivery_by_quantity</option>
-            <option value="free_item_by_total">free_item_by_total</option>
-            <option value="buy_x_get_y">buy_x_get_y</option>
-          </select>
-        </label>
-        <label style="display:grid;gap:4px;font-size:13px;color:#5a7a5e;margin-bottom:8px">Config JSON
-          <textarea id="p-config" style="border:1.5px solid #c8e6c9;border-radius:10px;padding:9px 12px;font:inherit;background:#f4faf5;resize:vertical;min-height:80px">{}</textarea>
-        </label>
-        <button onclick="createPromotion()" style="background:#43a047;color:#fff;border:none;border-radius:12px;padding:10px 18px;font:inherit;font-weight:700;cursor:pointer">Saqlash</button>
-      </section>
-      <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
-        <h2 style="margin:0 0 12px;font-size:18px">Aksiyalar</h2>
-        <div id="a-promotions" style="display:grid;gap:8px"></div>
-      </section>
+    <section class="admin-pane" id="pane-orders">
+      <div class="admin-card">
+        <h2 class="admin-card-title">Buyurtmalar</h2>
+        <div id="a-orders" class="admin-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="admin-bottom-nav">
+    <button class="admin-nav-btn active" id="nav-stats" onclick="switchAdminPane('stats')">
+      <strong>◔</strong>
+      <span>Statistika</span>
+    </button>
+    <button class="admin-nav-btn" id="nav-foods" onclick="switchAdminPane('foods')">
+      <strong>◫</strong>
+      <span>Ovqatlar</span>
+    </button>
+    <button class="admin-nav-btn" id="nav-promotions" onclick="switchAdminPane('promotions')">
+      <strong>✦</strong>
+      <span>Aksiyalar</span>
+    </button>
+    <button class="admin-nav-btn" id="nav-orders" onclick="switchAdminPane('orders')">
+      <strong>☰</strong>
+      <span>Buyurtmalar</span>
+    </button>
+  </nav>
+
+  <div class="admin-modal" id="action-modal" onclick="closeActionPopup(event)">
+    <div class="admin-modal-card" id="action-modal-card">
+      <div class="admin-modal-head">
+        <div class="admin-modal-title" id="action-modal-title">Xabar</div>
+        <button class="admin-modal-close" onclick="closeActionPopup()">x</button>
+      </div>
+      <div class="admin-modal-body" id="action-modal-body"></div>
     </div>
-
-    <!-- Orders -->
-    <section style="background:#fff;border:1.5px solid #c8e6c9;border-radius:18px;padding:16px;margin-bottom:24px;box-shadow:0 2px 8px rgba(30,80,30,.06)">
-      <h2 style="margin:0 0 12px;font-size:18px">📋 Buyurtmalar</h2>
-      <div id="a-orders" style="display:grid;gap:10px"></div>
-    </section>
-
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+let adminPane = 'stats';
+const PROMOTION_TYPE_LABELS = {
+  free_delivery_by_quantity: 'Miqdor bo\'yicha bepul yetkazib berish',
+  free_item_by_total: 'Summa bo\'yicha bonus',
+  buy_x_get_y: 'X ta olsang Y ta bonus'
+};
+
+function refreshAdminChip() {
+  const nameEl = document.getElementById('admin-name');
+  if (!nameEl) return;
+  const name = getFullName();
+  if (name !== 'Foydalanuvchi') nameEl.textContent = name;
+}
+
 function adminId() {
   return Number(getTelegramId() || 0);
 }
+
+function switchAdminPane(name) {
+  adminPane = name;
+  ['stats', 'foods', 'promotions', 'orders'].forEach((pane) => {
+    const paneEl = document.getElementById(`pane-${pane}`);
+    const navEl = document.getElementById(`nav-${pane}`);
+    if (paneEl) paneEl.classList.toggle('active', pane === name);
+    if (navEl) navEl.classList.toggle('active', pane === name);
+  });
+}
+
 function setStatus(text, ok = true) {
   const el = document.getElementById('a-status');
   el.textContent = text;
   el.style.color = ok ? '#2e7d32' : '#c62828';
 }
-function fmt(n) { return Number(n||0).toLocaleString('uz-UZ') + ' so\'m'; }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showActionPopup(title, message, ok = true) {
+  const modal = document.getElementById('action-modal');
+  const card = document.getElementById('action-modal-card');
+  document.getElementById('action-modal-title').textContent = title;
+  document.getElementById('action-modal-body').textContent = message;
+  card.classList.toggle('success', ok);
+  card.classList.toggle('error', !ok);
+  modal.classList.add('open');
+}
+
+function closeActionPopup(event) {
+  if (event && event.target && event.target.id !== 'action-modal') return;
+  document.getElementById('action-modal').classList.remove('open');
+}
+
+function fmt(n) {
+  return Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 async function bootstrapAdmin() {
   setStatus('Yuklanmoqda...');
-  const res  = await fetch(`/api/admin/bootstrap?telegram_id=${adminId()}`);
+  const res = await fetch(`/api/admin/bootstrap?telegram_id=${adminId()}`);
   const data = await res.json();
-  if (!res.ok) { setStatus(data.detail || 'Xato', false); return; }
+  if (!res.ok) {
+    setStatus(data.detail || 'Xato', false);
+    return;
+  }
   setStatus('Admin panel yuklandi');
   renderCredentials(data.credentials);
   renderFoods(data.foods);
@@ -153,122 +720,230 @@ async function bootstrapAdmin() {
 }
 
 function renderCredentials(c) {
-  document.getElementById('c-card').value  = c.payment_card_number  || '';
-  document.getElementById('c-owner').value = c.payment_card_owner   || '';
-  document.getElementById('c-accept').value= c.order_accept_until   || '';
-  document.getElementById('c-start').value = c.delivery_start_time  || '';
-  document.getElementById('c-end').value   = c.delivery_end_time    || '';
+  document.getElementById('c-card').value = c.payment_card_number || '';
+  document.getElementById('c-owner').value = c.payment_card_owner || '';
+  document.getElementById('c-accept').value = c.order_accept_until || '';
+  document.getElementById('c-start').value = c.delivery_start_time || '';
+  document.getElementById('c-end').value = c.delivery_end_time || '';
 }
 
 function renderStats(s) {
+  const soldRows = Object.entries(s.sold_by_food || {}).map(([name, qty]) => `
+    <div class="stat-row">
+      <span>${esc(name)}</span>
+      <strong>${qty} ta</strong>
+    </div>
+  `).join('');
+
   document.getElementById('a-stats').innerHTML = `
-    <strong style="color:#1a2e1c">${esc(s.label)}</strong>
-    <div>Buyurtmalar: <b>${s.orders_count}</b></div>
-    <div>Qabul qilingan: <b>${s.accepted_count}</b></div>
-    <div>Chek yuborilgan: <b>${s.submitted_count}</b></div>
-    <div>Tasdiqlangan tushum: <b>${fmt(s.paid_total)}</b></div>
-    <div>Kutilayotgan tushum: <b>${fmt(s.pending_total)}</b></div>
-    ${Object.entries(s.sold_by_food||{}).map(([k,v])=>`<div>${esc(k)}: <b>${v} ta</b></div>`).join('')}
+    <div class="entity-meta" style="margin-bottom:12px">${esc(s.label || '')}</div>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-box-label">Buyurtmalar</div>
+        <div class="stat-box-value">${Number(s.orders_count || 0)}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-label">Chek yuborilgan</div>
+        <div class="stat-box-value">${Number(s.submitted_count || 0)}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-label">Tasdiqlangan tushum</div>
+        <div class="stat-box-value" style="font-size:18px">${fmt(s.paid_total)}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-label">Kutilayotgan tushum</div>
+        <div class="stat-box-value" style="font-size:18px">${fmt(s.pending_total)}</div>
+      </div>
+    </div>
+    <div class="stat-list">
+      <div class="stat-row">
+        <span>Qabul qilingan</span>
+        <strong>${Number(s.accepted_count || 0)}</strong>
+      </div>
+      ${soldRows || '<div class="stat-row"><span>Sotilgan taomlar</span><strong>Hozircha yo\'q</strong></div>'}
+    </div>
   `;
 }
 
-const rowStyle = 'border:1.5px solid #c8e6c9;border-radius:12px;padding:12px;background:#f4faf5;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px';
-const btnStyle = (bg)=>`background:${bg};color:#fff;border:none;border-radius:8px;padding:6px 12px;font:inherit;font-weight:700;cursor:pointer;font-size:13px`;
-
 function renderFoods(foods) {
-  document.getElementById('a-foods').innerHTML = foods.length
-    ? foods.map(f => `
-      <div style="${rowStyle}">
-        <div>
-          <div style="font-weight:700;color:#1a2e1c">${esc(f.name)}</div>
-          <div style="color:#5a7a5e;font-size:13px">${fmt(f.price)} · ${f.quantity} ta · ${f.is_active ? 'Aktiv' : 'Yashirin'}</div>
-        </div>
-        <button onclick="deactivateFood(${f.id})" style="${btnStyle('#e65100')}">Yashirish</button>
-      </div>`).join('')
-    : '<div style="color:#5a7a5e;padding:10px">Bugun uchun ovqat yo\'q</div>';
+  document.getElementById('a-foods').innerHTML = foods.length ? foods.map((f) => `
+    <div class="entity-card">
+      <div class="entity-title">${esc(f.name)}</div>
+      <div class="entity-meta">${fmt(f.price)} • ${f.quantity} ta • ${f.is_active ? 'Aktiv' : 'Yashirin'}</div>
+      ${f.description ? `<div class="entity-meta" style="margin-top:8px">${esc(f.description)}</div>` : ''}
+      <div class="entity-actions">
+        <button class="admin-btn warn" onclick="deactivateFood(${f.id})">Yashirish</button>
+      </div>
+    </div>
+  `).join('') : '<div class="entity-card"><div class="entity-meta">Bugun uchun ovqat yo\'q</div></div>';
 }
 
 function renderPromotions(promos) {
-  document.getElementById('a-promotions').innerHTML = promos.length
-    ? promos.map(p => `
-      <div style="${rowStyle};flex-direction:column;align-items:stretch">
-        <div style="font-weight:700">${esc(p.name)}</div>
-        <div style="color:#5a7a5e;font-size:12px">${esc(p.promotion_type)}</div>
-        <div style="display:flex;gap:6px;margin-top:6px">
-          <button onclick="togglePromotion(${p.id},${p.is_active?0:1})" style="${btnStyle(p.is_active?'#e65100':'#43a047')}">${p.is_active?'O\'chirish':'Yoqish'}</button>
-          <button onclick="deletePromotion(${p.id})" style="${btnStyle('#c62828')}">O'chirish</button>
-        </div>
-      </div>`).join('')
-    : '<div style="color:#5a7a5e">Aksiyalar yo\'q</div>';
+  document.getElementById('a-promotions').innerHTML = promos.length ? promos.map((p) => `
+    <div class="entity-card">
+      <div class="entity-title">${esc(p.name)}</div>
+      <div class="entity-meta">${esc(PROMOTION_TYPE_LABELS[p.promotion_type] || p.promotion_type)}</div>
+      <div class="entity-actions">
+        <button class="admin-btn ${p.is_active ? 'warn' : 'primary'}" onclick="togglePromotion(${p.id}, ${p.is_active ? 0 : 1})">
+          ${p.is_active ? 'O\'chirish' : 'Yoqish'}
+        </button>
+        <button class="admin-btn danger" onclick="deletePromotion(${p.id})">O'chirish</button>
+      </div>
+    </div>
+  `).join('') : '<div class="entity-card"><div class="entity-meta">Aksiyalar yo\'q</div></div>';
 }
 
-const STATUS_UZ = {pending_payment:'Kutilmoqda',payment_submitted:'Chek yuborildi',accepted:'Qabul qilindi',rejected:'Rad etildi',preparing:'Tayyorlanmoqda',delivered:'Yetkazildi',canceled:'Bekor qilindi'};
-const PAY_UZ    = {pending:'To\'lov kutilmoqda',submitted:'Chek yuborildi',paid:'To\'landi',rejected:'Rad etildi',refunded:'Qaytarildi'};
+const STATUS_UZ = {
+  pending_payment: 'Kutilmoqda',
+  payment_submitted: 'Chek yuborildi',
+  accepted: 'Qabul qilindi',
+  rejected: 'Rad etildi',
+  preparing: 'Tayyorlanmoqda',
+  delivered: 'Yetkazildi',
+  canceled: 'Bekor qilindi'
+};
+
+const PAY_UZ = {
+  pending: 'To\'lov kutilmoqda',
+  submitted: 'Chek yuborildi',
+  paid: 'To\'landi',
+  rejected: 'Rad etildi',
+  refunded: 'Qaytarildi'
+};
+
+function orderButtonState(status) {
+  if (status === 'payment_submitted') {
+    return { accept: '', reject: '', cancel: 'disabled' };
+  }
+  if (status === 'accepted') {
+    return { accept: 'disabled', reject: 'disabled', cancel: '' };
+  }
+  if (status === 'rejected' || status === 'canceled' || status === 'delivered' || status === 'preparing' || status === 'pending_payment') {
+    return { accept: 'disabled', reject: 'disabled', cancel: 'disabled' };
+  }
+  return { accept: 'disabled', reject: 'disabled', cancel: 'disabled' };
+}
 
 function renderOrders(orders) {
-  document.getElementById('a-orders').innerHTML = orders.length
-    ? orders.map(o => `
-      <div style="border:1.5px solid #c8e6c9;border-radius:14px;overflow:hidden">
-        <div style="background:#e8f5e9;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700;color:#2e7d32">#${o.id} · ${esc(o.user.full_name)}</div>
-          <div style="font-size:12px;color:#5a7a5e">${STATUS_UZ[o.status]||o.status}</div>
+  document.getElementById('a-orders').innerHTML = orders.length ? orders.map((o) => `
+    <div class="order-card">
+      <div class="order-card-head">
+        <div>
+          <div class="order-card-title">#${o.id} • ${esc(o.user.full_name)}</div>
+          <div class="order-card-status">${STATUS_UZ[o.status] || o.status}</div>
         </div>
-        <div style="padding:12px 14px;display:grid;gap:6px;font-size:13px">
-          <div>${esc(o.phone)} · ${esc(o.location_text||'—')}</div>
-          ${o.items.map(i=>`<div style="display:flex;justify-content:space-between"><span>${esc(i.food_name)}</span><span>${i.quantity} × ${fmt(i.unit_price)}</span></div>`).join('')}
-          <div style="font-weight:700;border-top:1px dashed #c8e6c9;padding-top:6px">Jami: ${fmt(o.total_price)}</div>
-          <div style="color:#5a7a5e">${PAY_UZ[o.payment_status]||o.payment_status}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
-            <button onclick="acceptOrder(${o.id})" style="${btnStyle('#2e7d32')}">Qabul</button>
-            <button onclick="rejectOrder(${o.id})" style="${btnStyle('#c62828')}">Rad</button>
-            <button onclick="cancelOrder(${o.id})" style="${btnStyle('#e65100')}">Bekor</button>
+        <div class="order-card-status">${PAY_UZ[o.payment_status] || o.payment_status}</div>
+      </div>
+      <div class="order-card-body">
+        <div>${esc(o.phone)} • ${esc(o.location_text || '-')}</div>
+        ${(o.items || []).map((i) => `
+          <div class="order-item">
+            <span>${esc(i.food_name)}</span>
+            <strong>${i.quantity} × ${fmt(i.unit_price)}</strong>
           </div>
+        `).join('')}
+        <div class="order-total">
+          <strong>Jami: ${fmt(o.total_price)}</strong>
         </div>
-      </div>`).join('')
-    : '<div style="color:#5a7a5e;padding:10px">Buyurtmalar yo\'q</div>';
+        <div class="entity-actions">
+          <button class="admin-btn primary" onclick="acceptOrder(${o.id})" ${orderButtonState(o.status).accept}>Qabul</button>
+          <button class="admin-btn danger" onclick="rejectOrder(${o.id})" ${orderButtonState(o.status).reject}>Rad</button>
+          <button class="admin-btn warn" onclick="cancelOrder(${o.id})" ${orderButtonState(o.status).cancel}>Bekor</button>
+        </div>
+      </div>
+    </div>
+  `).join('') : '<div class="entity-card"><div class="entity-meta">Buyurtmalar yo\'q</div></div>';
 }
 
 async function loadStats(period) {
-  const res  = await fetch(`/api/admin/stats?telegram_id=${adminId()}&period=${period}`);
+  const res = await fetch(`/api/admin/stats?telegram_id=${adminId()}&period=${period}`);
   const data = await res.json();
-  if (res.ok) renderStats(data); else setStatus(data.detail||'Xato', false);
+  if (res.ok) {
+    renderStats(data);
+    switchAdminPane('stats');
+  } else {
+    setStatus(data.detail || 'Xato', false);
+  }
 }
 
 async function saveCredentials() {
   const payload = {
     payment_card_number: document.getElementById('c-card').value,
-    payment_card_owner:  document.getElementById('c-owner').value,
-    order_accept_until:  document.getElementById('c-accept').value,
+    payment_card_owner: document.getElementById('c-owner').value,
+    order_accept_until: document.getElementById('c-accept').value,
     delivery_start_time: document.getElementById('c-start').value,
-    delivery_end_time:   document.getElementById('c-end').value,
+    delivery_end_time: document.getElementById('c-end').value,
   };
-  const res  = await fetch(`/api/admin/credentials?telegram_id=${adminId()}`, {
-    method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload),
+  const res = await fetch(`/api/admin/credentials?telegram_id=${adminId()}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
-  setStatus(res.ok ? 'Sozlamalar saqlandi' : (data.detail||'Xato'), res.ok);
+  setStatus(res.ok ? 'Sozlamalar saqlandi' : (data.detail || 'Xato'), res.ok);
 }
 
 async function createFood() {
+  const createBtn = document.getElementById('create-food-btn');
+  const originalText = createBtn.textContent;
+  createBtn.disabled = true;
+  createBtn.textContent = 'Ovqat qo\'shilmoqda...';
+
+  const resetCreateBtn = () => {
+    createBtn.disabled = false;
+    createBtn.textContent = originalText;
+  };
+
+  const uploadInput = document.getElementById('f-image-upload');
+  if (uploadInput.files && uploadInput.files[0]) {
+    const uploadFd = new FormData();
+    uploadFd.append('telegram_id', adminId());
+    uploadFd.append('image', uploadInput.files[0]);
+    const uploadRes = await fetch('/api/admin/foods/upload-image', { method: 'POST', body: uploadFd });
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok) {
+      setStatus(uploadData.detail || 'Rasm yuklanmadi', false);
+      showActionPopup('Xatolik', uploadData.detail || 'Rasm yuklanmadi', false);
+      resetCreateBtn();
+      return;
+    }
+    document.getElementById('f-image').value = uploadData.file_id || '';
+  }
+
   const fd = new FormData();
-  ['telegram_id','f-date','f-name','f-price','f-quantity','f-description','f-image'].forEach((k,i) => {
-    const keys  = ['telegram_id','menu_date','name','price','quantity','description','image_file_id'];
-    const vals  = [adminId(), document.getElementById('f-date').value, document.getElementById('f-name').value,
-                   document.getElementById('f-price').value, document.getElementById('f-quantity').value,
-                   document.getElementById('f-description').value, document.getElementById('f-image').value];
-    fd.append(keys[i], vals[i]);
-  });
-  const res  = await fetch('/api/admin/foods', {method:'POST', body:fd});
+  const keys = ['telegram_id', 'menu_date', 'name', 'price', 'quantity', 'description', 'image_file_id'];
+  const vals = [
+    adminId(),
+    document.getElementById('f-date').value,
+    document.getElementById('f-name').value,
+    document.getElementById('f-price').value,
+    document.getElementById('f-quantity').value,
+    document.getElementById('f-description').value,
+    document.getElementById('f-image').value,
+  ];
+  keys.forEach((key, idx) => fd.append(key, vals[idx]));
+
+  const res = await fetch('/api/admin/foods', { method: 'POST', body: fd });
   const data = await res.json();
-  setStatus(res.ok ? `Ovqat #${data.id} qo'shildi` : (data.detail||'Xato'), res.ok);
-  if (res.ok) bootstrapAdmin();
+  setStatus(res.ok ? `Ovqat #${data.id} qo'shildi` : (data.detail || 'Xato'), res.ok);
+  if (res.ok) {
+    showActionPopup('Muvaffaqiyatli', `Ovqat #${data.id} muvaffaqiyatli qo'shildi.`);
+    uploadInput.value = '';
+    document.getElementById('f-image').value = '';
+    switchAdminPane('foods');
+    bootstrapAdmin();
+  } else {
+    showActionPopup('Xatolik', data.detail || 'Ovqat qo\'shishda xato yuz berdi.', false);
+  }
+  resetCreateBtn();
 }
 
 async function deactivateFood(id) {
-  const fd = new FormData(); fd.append('telegram_id', adminId());
-  const res = await fetch(`/api/admin/foods/${id}/deactivate`, {method:'POST', body:fd});
+  const fd = new FormData();
+  fd.append('telegram_id', adminId());
+  const res = await fetch(`/api/admin/foods/${id}/deactivate`, { method: 'POST', body: fd });
   const data = await res.json();
-  setStatus(res.ok ? 'Ovqat yashirildi' : (data.detail||'Xato'), res.ok);
+  setStatus(res.ok ? 'Ovqat yashirildi' : (data.detail || 'Xato'), res.ok);
   if (res.ok) bootstrapAdmin();
 }
 
@@ -278,33 +953,55 @@ async function createPromotion() {
   fd.append('name', document.getElementById('p-name').value);
   fd.append('promotion_type', document.getElementById('p-type').value);
   fd.append('config_json', document.getElementById('p-config').value);
-  const res  = await fetch('/api/admin/promotions', {method:'POST', body:fd});
+  const res = await fetch('/api/admin/promotions', { method: 'POST', body: fd });
   const data = await res.json();
-  setStatus(res.ok ? `Aksiya #${data.id} yaratildi` : (data.detail||'Xato'), res.ok);
-  if (res.ok) bootstrapAdmin();
+  setStatus(res.ok ? `Aksiya #${data.id} yaratildi` : (data.detail || 'Xato'), res.ok);
+  if (res.ok) {
+    switchAdminPane('promotions');
+    bootstrapAdmin();
+  }
 }
 
 async function togglePromotion(id, flag) {
-  const fd = new FormData(); fd.append('telegram_id', adminId()); fd.append('is_active', flag);
-  const res = await fetch(`/api/admin/promotions/${id}/toggle`, {method:'POST', body:fd});
+  const fd = new FormData();
+  fd.append('telegram_id', adminId());
+  fd.append('is_active', flag);
+  const res = await fetch(`/api/admin/promotions/${id}/toggle`, { method: 'POST', body: fd });
   const data = await res.json();
-  setStatus(res.ok ? 'Yangilandi' : (data.detail||'Xato'), res.ok);
+  setStatus(res.ok ? 'Yangilandi' : (data.detail || 'Xato'), res.ok);
   if (res.ok) bootstrapAdmin();
 }
 
 async function deletePromotion(id) {
-  const res = await fetch(`/api/admin/promotions/${id}?telegram_id=${adminId()}`, {method:'DELETE'});
+  const res = await fetch(`/api/admin/promotions/${id}?telegram_id=${adminId()}`, { method: 'DELETE' });
   const data = await res.json();
-  setStatus(res.ok ? 'O\'chirildi' : (data.detail||'Xato'), res.ok);
+  setStatus(res.ok ? 'O\'chirildi' : (data.detail || 'Xato'), res.ok);
   if (res.ok) bootstrapAdmin();
 }
 
 async function orderAction(id, action) {
-  const fd = new FormData(); fd.append('telegram_id', adminId());
-  const res = await fetch(`/api/admin/orders/${id}/${action}`, {method:'POST', body:fd});
+  const fd = new FormData();
+  fd.append('telegram_id', adminId());
+  const res = await fetch(`/api/admin/orders/${id}/${action}`, { method: 'POST', body: fd });
   const data = await res.json();
-  setStatus(res.ok ? 'Bajarildi' : (data.detail||'Xato'), res.ok);
-  if (res.ok) bootstrapAdmin();
+  setStatus(res.ok ? 'Bajarildi' : (data.detail || 'Xato'), res.ok);
+  if (res.ok) {
+    const successText = {
+      accept: 'Buyurtma muvaffaqiyatli qabul qilindi.',
+      reject: 'Buyurtma muvaffaqiyatli rad qilindi.',
+      cancel: 'Buyurtma muvaffaqiyatli bekor qilindi.'
+    };
+    showActionPopup('Muvaffaqiyatli', successText[action] || 'Amal bajarildi.');
+    switchAdminPane('orders');
+    bootstrapAdmin();
+  } else {
+    const errorText = {
+      accept: 'Buyurtmani qabul qilib bo\'lmadi.',
+      reject: 'Buyurtmani rad qilib bo\'lmadi.',
+      cancel: 'Buyurtmani bekor qilib bo\'lmadi.'
+    };
+    showActionPopup('Xatolik', data.detail || errorText[action] || 'Amal bajarilmadi.', false);
+  }
 }
 
 async function acceptOrder(id) { await orderAction(id, 'accept'); }
@@ -313,17 +1010,20 @@ async function cancelOrder(id) { await orderAction(id, 'cancel'); }
 
 async function sendBroadcast() {
   setStatus('Yuborilmoqda...');
-  const fd = new FormData(); fd.append('telegram_id', adminId());
-  const res = await fetch('/api/admin/broadcast', {method:'POST', body:fd});
+  const fd = new FormData();
+  fd.append('telegram_id', adminId());
+  const res = await fetch('/api/admin/broadcast', { method: 'POST', body: fd });
   const data = await res.json();
-  setStatus(res.ok ? `Broadcast: ${data.sent} yuborildi, ${data.failed} xato` : (data.detail||'Xato'), res.ok);
+  setStatus(res.ok ? `Broadcast: ${data.sent} yuborildi, ${data.failed} xato` : (data.detail || 'Xato'), res.ok);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const nameEl = document.getElementById('admin-name');
-  const name = getFullName();
-  if (nameEl && name !== 'Foydalanuvchi') nameEl.textContent = name;
+document.addEventListener('DOMContentLoaded', async () => {
+  await ensureTelegramUser();
+  refreshAdminChip();
+  switchAdminPane('stats');
   bootstrapAdmin();
+  setTimeout(refreshAdminChip, 800);
+  setTimeout(refreshAdminChip, 1800);
 });
 </script>
 {% endblock %}
