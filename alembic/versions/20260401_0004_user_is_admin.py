@@ -18,11 +18,30 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = {column["name"] for column in inspector.get_columns("users")}
+
+    if "is_admin" not in columns:
+        op.add_column(
+            "users",
+            sa.Column("is_admin", sa.Boolean(), nullable=False, server_default=sa.false()),
+        )
+        return
+
+    op.execute(sa.text("UPDATE users SET is_admin = false WHERE is_admin IS NULL"))
+    op.alter_column(
         "users",
-        sa.Column("is_admin", sa.Boolean(), nullable=False, server_default=sa.false()),
+        "is_admin",
+        existing_type=sa.Boolean(),
+        nullable=False,
+        server_default=sa.false(),
     )
 
 
 def downgrade() -> None:
-    op.drop_column("users", "is_admin")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = {column["name"] for column in inspector.get_columns("users")}
+    if "is_admin" in columns:
+        op.drop_column("users", "is_admin")
